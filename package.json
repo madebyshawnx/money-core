@@ -30,6 +30,18 @@
     "./policy": {
       "types": "./dist/policy.d.ts",
       "import": "./dist/policy.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.js"
+    },
+    "./money": {
+      "types": "./dist/money.d.ts",
+      "import": "./dist/money.js"
+    },
+    "./seed": {
+      "types": "./dist/seed.d.ts",
+      "import": "./dist/seed.js"
     }
   },
   "files": [
