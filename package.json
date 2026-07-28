@@ -1,7 +1,6 @@
 {
   "name": "@madebyshawnx/money-core",
   "version": "0.1.0",
-  "private": true,
   "description": "Canonical financial engines shared by Cadence, Money Manager, and PennyBank: ledger, recurring, forecast, rules, and the AI policy validator.",
   "type": "module",
   "main": "./dist/index.js",
@@ -42,7 +41,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "verify": "npm run typecheck && npm run test && npm run build"
+    "verify": "npm run typecheck && npm run test && npm run build",
+    "prepare": "npm run build"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
