@@ -1,7 +1,7 @@
 {
   "name": "@madebyshawnx/money-core",
   "version": "0.1.0",
-  "description": "Canonical financial engines shared by Cadence, Money Manager, and PennyBank: ledger, recurring, forecast, rules, and the AI policy validator.",
+  "description": "Canonical financial engines and design-system kit shared by Cadence and Money Manager: ledger, recurring, forecast, rules, the AI policy validator, and the Ledger Dispatch UI primitives.",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -42,6 +42,10 @@
     "./seed": {
       "types": "./dist/seed.d.ts",
       "import": "./dist/seed.js"
+    },
+    "./ui": {
+      "types": "./dist/components/ui/index.d.ts",
+      "import": "./dist/components/ui/index.js"
     }
   },
   "files": [
@@ -49,11 +53,12 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "build": "tsup",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "npm run clean && tsup",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "verify": "npm run typecheck && npm run test && npm run build",
+    "verify": "npm run typecheck && npm run build && npm run test",
     "prepare": "npm run build"
   },
   "publishConfig": {
@@ -66,8 +71,32 @@
   "engines": {
     "node": ">=20"
   },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.6.0"
+  },
+  "peerDependencies": {
+    "lucide-react": ">=0.469.0",
+    "react": "^18.2.0 || ^19.0.0",
+    "react-dom": "^18.2.0 || ^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "lucide-react": { "optional": false },
+    "react": { "optional": false },
+    "react-dom": { "optional": false }
+  },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.5.2",
     "@types/node": "^22.20.1",
+    "@types/react": "^19.0.7",
+    "@types/react-dom": "^19.0.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^25.0.1",
+    "lucide-react": "0.469.0",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
     "tsup": "^8.3.5",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
