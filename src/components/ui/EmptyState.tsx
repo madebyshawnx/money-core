@@ -6,7 +6,16 @@ export interface EmptyStateProps {
   /** Lucide icon for the empty surface. Rendered decoratively (aria-hidden). */
   icon?: LucideIcon;
   title: string;
-  description?: string;
+  /**
+   * The supporting line. `ReactNode`, not `string`, on purpose: an empty state
+   * often has to put a link INSIDE the sentence — "load the sample dataset from
+   * Settings" — where that link is the way out of the empty screen. A `string`
+   * type forces the link out into `action` or drops it, which is exactly why a
+   * consuming app kept its own EmptyState rather than adopt this one. Widening
+   * to `ReactNode` is backward-compatible: every existing string caller still
+   * type-checks, because a string already is a `ReactNode`.
+   */
+  description?: ReactNode;
   /** Optional call-to-action (e.g. a Button). Kept optional — many screens are read-only. */
   action?: ReactNode;
   className?: string;
