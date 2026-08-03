@@ -3,7 +3,7 @@
  *
  * WHY THIS IS IN THE PACKAGE
  * --------------------------
- * These twelve files were previously copy-pasted between Cadence and Money
+ * These files were previously copy-pasted between Cadence and Money
  * Manager and held together by the same byte-identical tripwire the engines
  * used (`money-manager/tests/integration/engine-parity.test.ts`). That made
  * every restyle a two-repo commit and made a one-repo fix a silent divergence
@@ -60,6 +60,7 @@ export {
 } from "./DataTable.js";
 export { EmptyState, type EmptyStateProps } from "./EmptyState.js";
 export { PageHeader, type PageHeaderProps } from "./PageHeader.js";
+export { SeverityBadge, type Severity, type SeverityBadgeProps } from "./SeverityBadge.js";
 export { StatTile, type StatTileProps, type StatTone } from "./StatTile.js";
 export {
   StatusBadge,

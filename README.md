@@ -60,9 +60,9 @@ both cases) and verified not to break either suite:
 
 ## `./ui` — the Ledger Dispatch kit
 
-Twelve primitives (Badge, Button, Callout, Card, ConfidenceMeter, DataTable,
-EmptyState, EvidenceDrawer, PageHeader, Sheet, StatTile, StatusBadge/StatusCard)
-plus the `cn` class-merge helper, all from one subpath:
+Thirteen primitives (Badge, Button, Callout, Card, ConfidenceMeter, DataTable,
+EmptyState, EvidenceDrawer, PageHeader, SeverityBadge, Sheet, StatTile,
+StatusBadge/StatusCard) plus the `cn` class-merge helper, all from one subpath:
 
 ```ts
 import { Card, StatusBadge, Button, cn } from "@madebyshawnx/money-core/ui";
@@ -84,8 +84,8 @@ a component. Two things a consumer must do:
 ### Why the UI half is built unbundled
 
 `Sheet` and `EvidenceDrawer` hold React state and carry `"use client"`. The
-other ten are server components. Bundling the kit into a single `ui.js` forces
-one answer for all twelve: either esbuild drops the directive and the two client
+rest are server components. Bundling the kit into a single `ui.js` forces one
+answer for all of them: either esbuild drops the directive and the two client
 components crash under the Next 15 App Router, or it is hoisted and a `<Card>`
 in a server page starts shipping client JS for no reason.
 

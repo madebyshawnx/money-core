@@ -30,7 +30,7 @@ function uiSources(): { file: string; text: string }[] {
 describe("kit source — token discipline", () => {
   it("finds the kit it claims to be scanning", () => {
     // A scan over an empty directory is a green test that proves nothing.
-    expect(uiSources().length).toBeGreaterThanOrEqual(13);
+    expect(uiSources().length).toBeGreaterThanOrEqual(14);
   });
 
   it("names no raw Tailwind palette colour anywhere in the kit", () => {

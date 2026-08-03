@@ -35,7 +35,7 @@
  *
  * THE UI KIT IS NOT RE-EXPORTED HERE. `./ui` is a separate subpath on purpose:
  * this entry is a pure-TypeScript module that a server route, a script or a
- * test can import with no React in the picture, and pulling twelve components
+ * test can import with no React in the picture, and pulling the components
  * through it would make React a hard requirement of the engines. Import the
  * primitives from `@madebyshawnx/money-core/ui`.
  */

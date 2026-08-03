@@ -48,7 +48,7 @@ beforeAll(() => {
 
 describe("built UI output", () => {
   it("emits one module per primitive rather than one bundle", () => {
-    // 12 primitives + the barrel. A bundled build would collapse these.
+    // 13 primitives + the barrel. A bundled build would collapse these.
     expect(built.map((b) => b.file).sort()).toEqual(
       [
         "Badge.js",
@@ -60,6 +60,7 @@ describe("built UI output", () => {
         "EmptyState.js",
         "EvidenceDrawer.js",
         "PageHeader.js",
+        "SeverityBadge.js",
         "Sheet.js",
         "StatTile.js",
         "StatusBadge.js",

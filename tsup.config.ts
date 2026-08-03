@@ -10,7 +10,7 @@ import { defineConfig } from "tsup";
  * UI (UNBUNDLED). `bundle: false` is load-bearing and not a style choice.
  * `Sheet` and `EvidenceDrawer` carry a `"use client"` directive; every other
  * primitive is a server component. Bundling the kit into one `ui.js` would
- * force a single answer for all twelve — either the directive is dropped and
+ * force a single answer for all of them — either the directive is dropped and
  * the two client components break under the Next 15 App Router, or it is
  * hoisted to the whole file and a `<Card>` in a server page starts shipping
  * client JS. Transpiling file-by-file keeps the directive attached to the two
