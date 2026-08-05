@@ -35,7 +35,7 @@ export default defineConfig([
       recurring: "src/lib/domain/recurring/index.ts",
       forecast: "src/lib/domain/forecast/index.ts",
       rules: "src/lib/domain/rules/index.ts",
-      policy: "src/lib/domain/policy/validate.ts",
+      policy: "src/lib/domain/policy/index.ts",
       types: "src/lib/domain/types.ts",
       money: "src/lib/utils/money.ts",
       seed: "src/lib/seed/scenarios.ts",
