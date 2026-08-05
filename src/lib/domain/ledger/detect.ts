@@ -124,27 +124,17 @@ function clusterByWindow(members: Transaction[], windowDays: number): Transactio
 export function detectTransfers(transactions: Transaction[]): Transaction[] {
   const flaggable = transactions.filter((t) => mayFlag(t, "TRANSFER_CANDIDATE"));
   const outflows = flaggable.filter((t) => t.amountCents < 0);
-  const inflows = flaggable.filter((t) => t.amountCents > 0);
-  const used = new Set<string>();
+  const inflowIndex = indexInflows(flaggable.filter((t) => t.amountCents > 0));
+  const hasEvidence = memoizeEvidence();
   const pairing = new Map<string, string>(); // txn id → transferGroupId
 
   for (const out of outflows) {
-    // Deterministic match: first eligible inflow by id order. At least one side
-    // of the pair must carry transfer wording — amount coincidence alone is not
-    // enough evidence to silently drop money from income and spending.
-    const match = [...inflows]
-      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
-      .find(
-        (inn) =>
-          !used.has(inn.id) &&
-          inn.accountId !== out.accountId &&
-          inn.amountCents === -out.amountCents &&
-          daysApart(out, inn) <= TRANSFER_WINDOW_DAYS &&
-          (hasTransferEvidence(out) || hasTransferEvidence(inn)),
-      );
+    // Deterministic match: lowest eligible inflow by id order, independent of
+    // input order. At least one side of the pair must carry transfer wording —
+    // amount coincidence alone is not enough evidence to silently drop money
+    // from income and spending.
+    const match = takeMatchingInflow(inflowIndex, out, hasEvidence);
     if (!match) continue;
-    used.add(out.id);
-    used.add(match.id);
     const groupId = `xfer_${[out.id, match.id].sort().join("_")}`;
     pairing.set(out.id, groupId);
     pairing.set(match.id, groupId);
@@ -160,6 +150,110 @@ export function detectTransfers(transactions: Transaction[]): Transaction[] {
 /** Run both detectors (duplicates first, then transfers) over the ledger. */
 export function detectAll(transactions: Transaction[]): Transaction[] {
   return detectTransfers(detectDuplicates(transactions));
+}
+
+/**
+ * Inflows still available to pair: signed amount → whole-day bucket → the
+ * inflows on that day in ascending id order.
+ *
+ * A candidate must have the exact opposite amount and fall inside
+ * TRANSFER_WINDOW_DAYS, so an outflow only has to probe one amount bucket and
+ * the (2 × window + 1) day buckets straddling its own date — a handful of rows
+ * instead of the whole inflow side. The previous implementation copied and
+ * re-sorted every inflow inside the per-outflow loop, which made detection
+ * O(N² log N) and dominated import time on real ledgers.
+ */
+type InflowIndex = Map<number, Map<number, Transaction[]>>;
+
+/**
+ * Whole-day bucket for a transaction date. Bucketing is a pre-filter only: a
+ * pair no more than N days apart in milliseconds is also no more than N buckets
+ * apart, so the probed buckets are a superset and `daysApart` still decides.
+ */
+function epochDay(t: Transaction): number {
+  return Math.floor(t.transactionDate.getTime() / MS_PER_DAY);
+}
+
+function indexInflows(inflows: Transaction[]): InflowIndex {
+  // One sort for the whole run replaces one sort per outflow, and inserting in
+  // id order leaves every day bucket id-ascending for free.
+  const byId = [...inflows].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const index: InflowIndex = new Map();
+  for (const inn of byId) {
+    const amount = inn.amountCents;
+    const byDay = index.get(amount) ?? index.set(amount, new Map()).get(amount)!;
+    const day = epochDay(inn);
+    (byDay.get(day) ?? byDay.set(day, []).get(day)!).push(inn);
+  }
+  return index;
+}
+
+/** The pairing predicate, unchanged: this is what decides whether money is a transfer. */
+function isTransferPair(
+  out: Transaction,
+  inn: Transaction,
+  hasEvidence: (t: Transaction) => boolean,
+): boolean {
+  return (
+    inn.accountId !== out.accountId &&
+    inn.amountCents === -out.amountCents &&
+    daysApart(out, inn) <= TRANSFER_WINDOW_DAYS &&
+    (hasEvidence(out) || hasEvidence(inn))
+  );
+}
+
+/**
+ * Remove and return the lowest-id inflow that pairs with `out`, if any.
+ * Removing it is what consumes the candidate: an inflow settles exactly one
+ * outflow, and outflows are offered the index in input order.
+ */
+function takeMatchingInflow(
+  index: InflowIndex,
+  out: Transaction,
+  hasEvidence: (t: Transaction) => boolean,
+): Transaction | undefined {
+  const byDay = index.get(-out.amountCents);
+  if (byDay === undefined) return undefined;
+
+  const outDay = epochDay(out);
+  let best: Transaction | undefined;
+  let bestBucket: Transaction[] | undefined;
+  let bestIndex = -1;
+
+  for (let offset = -TRANSFER_WINDOW_DAYS; offset <= TRANSFER_WINDOW_DAYS; offset++) {
+    const bucket = byDay.get(outDay + offset);
+    if (bucket === undefined) continue;
+    for (let i = 0; i < bucket.length; i++) {
+      const inn = bucket[i]!;
+      // Buckets are id-ascending, so nothing further along can beat the incumbent.
+      if (best !== undefined && inn.id >= best.id) break;
+      if (!isTransferPair(out, inn, hasEvidence)) continue;
+      best = inn;
+      bestBucket = bucket;
+      bestIndex = i;
+      break;
+    }
+  }
+
+  if (best === undefined || bestBucket === undefined) return undefined;
+  bestBucket.splice(bestIndex, 1);
+  return best;
+}
+
+/**
+ * Per-run memo for `hasTransferEvidence`, which runs a regex over three
+ * concatenated fields. The outflow's own evidence used to be recomputed for
+ * every candidate it looked at; now each transaction is tested at most once.
+ */
+function memoizeEvidence(): (t: Transaction) => boolean {
+  const cache = new Map<Transaction, boolean>();
+  return (t) => {
+    const cached = cache.get(t);
+    if (cached !== undefined) return cached;
+    const result = hasTransferEvidence(t);
+    cache.set(t, result);
+    return result;
+  };
 }
 
 /** Collapse a grouping key into a filesystem/id-safe deterministic token. */
