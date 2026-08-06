@@ -47,4 +47,4 @@ export * as ledger from "@/lib/domain/ledger";
 export * as recurring from "@/lib/domain/recurring";
 export * as forecast from "@/lib/domain/forecast";
 export * as rules from "@/lib/domain/rules";
-export * as policy from "@/lib/domain/policy/validate";
+export * as policy from "@/lib/domain/policy";
