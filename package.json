@@ -1,6 +1,6 @@
 {
   "name": "@madebyshawnx/money-core",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Canonical financial engines and design-system kit shared by Cadence and Money Manager: ledger, recurring, forecast, rules, the AI policy validator, and the Ledger Dispatch UI primitives.",
   "type": "module",
   "main": "./dist/index.js",
@@ -30,6 +30,10 @@
     "./policy": {
       "types": "./dist/policy.d.ts",
       "import": "./dist/policy.js"
+    },
+    "./freshness": {
+      "types": "./dist/freshness.d.ts",
+      "import": "./dist/freshness.js"
     },
     "./types": {
       "types": "./dist/types.d.ts",

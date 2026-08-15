@@ -70,10 +70,11 @@ export {
   type StatusCardProps,
 } from "./StatusBadge.js";
 
-/* Client components. Their `"use client"` boundary lives in their own module. */
+/* Client modules. Their `"use client"` boundary lives in their own file. */
 export {
   EvidenceDrawer,
   type EvidenceDrawerProps,
   type EvidenceItem,
 } from "./EvidenceDrawer.js";
 export { Sheet, type SheetProps } from "./Sheet.js";
+export { useFocusTrap, type FocusTrapOptions } from "./useFocusTrap.js";
