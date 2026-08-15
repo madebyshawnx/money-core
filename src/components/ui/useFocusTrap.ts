@@ -6,16 +6,33 @@ import { useEffect, type RefObject } from "react";
  * Everything inside the trap a keyboard can land on.
  *
  * ONE selector, because the traps a reader meets across the family must agree
- * on what "focusable" means. There is no `offsetParent` visibility filter, and
- * that is deliberate twice over: the containers this hook guards are only
- * mounted while they are open, so every match is on screen — and `offsetParent`
- * is always `null` under jsdom, so a filter would silently empty the list in
- * tests and every Tab press would park on the container instead of cycling.
- * (`Sheet`'s previous inline trap had exactly that filter, which is why its
- * wrap behaviour was untestable until it adopted this hook.)
+ * on what "focusable" means.
  */
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * A selector match still is not a boundary if the user cannot see it: focusing
+ * a `display:none` element is a no-op, so an invisible first/last either
+ * swallows the arm-time focus or lets Tab walk straight out of the overlay.
+ *
+ * `checkVisibility()` rather than the `offsetParent !== null` filter `Sheet`'s
+ * inline trap used to carry: `offsetParent` is always `null` under jsdom, so
+ * that filter silently emptied the list in tests and every Tab press parked on
+ * the panel instead of cycling — the wrap behaviour was untestable. In a
+ * browser, `checkVisibility` is ancestor-aware and catches
+ * `display:none`/`visibility:hidden` wherever they come from. jsdom (as of 25)
+ * does not implement it, so the fallback asks computed style directly — which
+ * under jsdom sees the element's OWN `display`/`visibility` (and inherited
+ * `visibility`), but not a `display:none` ancestor. That asymmetry is
+ * acceptable on purpose: tests hide elements inline, browsers get the full
+ * answer, and an unstyled element is visible in both worlds.
+ */
+function isVisible(el: HTMLElement): boolean {
+  if (typeof el.checkVisibility === "function") return el.checkVisibility();
+  const style = el.ownerDocument.defaultView?.getComputedStyle(el);
+  return style ? style.display !== "none" && style.visibility !== "hidden" : true;
+}
 
 export interface FocusTrapOptions {
   /** Trap while true; release and restore focus when it goes false or unmounts. */
@@ -69,7 +86,7 @@ export function useFocusTrap({
     body.style.overflow = "hidden";
 
     const focusables = () =>
-      Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+      Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(isVisible);
 
     (focusables()[0] ?? container).focus();
 

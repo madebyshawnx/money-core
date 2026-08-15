@@ -93,6 +93,43 @@ describe("useFocusTrap", () => {
     expect(screen.getByRole("button", { name: "first" })).toHaveFocus();
   });
 
+  it("skips invisible focusables when arming and at the Tab boundaries", async () => {
+    // A hidden element that matches the selector must not become the trap's
+    // first/last: focusing it is a no-op in a browser, so an invisible
+    // boundary either swallows the arm-time focus or lets Tab walk out of the
+    // overlay entirely. Inline display:none is used because it is the form of
+    // hiding jsdom's computed style resolves (jsdom has no checkVisibility;
+    // the hook's fallback reads getComputedStyle).
+    function HiddenEdges({ onEscape = () => {} }: { onEscape?: () => void }) {
+      const containerRef = useRef<HTMLDivElement>(null);
+      const returnFocusRef = useRef<HTMLButtonElement>(null);
+      useFocusTrap({ active: true, containerRef, returnFocusRef, onEscape });
+      return (
+        <div>
+          <button ref={returnFocusRef}>trigger</button>
+          <div ref={containerRef} tabIndex={-1}>
+            <button style={{ display: "none" }}>hidden first</button>
+            <button>visible first</button>
+            <button>visible last</button>
+            <button style={{ display: "none" }}>hidden last</button>
+          </div>
+        </div>
+      );
+    }
+
+    const user = userEvent.setup();
+    render(<HiddenEdges />);
+
+    expect(screen.getByRole("button", { name: "visible first" })).toHaveFocus();
+
+    screen.getByRole("button", { name: "visible last" }).focus();
+    await user.tab();
+    expect(screen.getByRole("button", { name: "visible first" })).toHaveFocus();
+
+    await user.tab({ shift: true });
+    expect(screen.getByRole("button", { name: "visible last" })).toHaveFocus();
+  });
+
   it("parks focus on the container and keeps Tab from escaping when nothing inside is focusable", async () => {
     const user = userEvent.setup();
     render(<Harness active withFocusables={false} />);
