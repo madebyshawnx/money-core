@@ -41,6 +41,17 @@ version and tag exist so a human reading a pin, a diff, or a changelog can
 tell WHAT KIND of change sits between two pins without reading every commit.
 Dep-only and CI-only merges do not bump.
 
+### Build-toolchain pins (MC-4)
+
+Every consumer builds `dist/` at install time (`prepare`) with devDependencies
+resolved FRESH against this file's ranges — npm ignores a git dependency's
+lockfile. `tsup`, `typescript` and the `esbuild` override are therefore
+EXACT-pinned: with ranges, a routine toolchain minor release could break all
+three consumer installs at once with no change in any repo. Upgrading the
+toolchain is a deliberate pin bump verified by `npm run verify`, never a drive-by
+resolution. Test-only devDependencies stay ranged on purpose — they never run
+inside a consumer's install.
+
 ## Invariants
 
 - **Money is integer cents.** Negative = outflow. Every engine assumes it.
