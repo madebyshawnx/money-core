@@ -30,8 +30,8 @@ import { join, resolve } from "node:path";
 const UI_DIST = resolve(__dirname, "../../../dist/components/ui");
 const DIRECTIVE = '"use client"';
 
-/** The two primitives that hold React state and therefore must be client. */
-const CLIENT_MODULES = ["Sheet.js", "EvidenceDrawer.js"];
+/** The modules that touch React state or the DOM and therefore must be client. */
+const CLIENT_MODULES = ["Sheet.js", "EvidenceDrawer.js", "useFocusTrap.js"];
 
 let built: { file: string; text: string }[] = [];
 
@@ -48,7 +48,8 @@ beforeAll(() => {
 
 describe("built UI output", () => {
   it("emits one module per primitive rather than one bundle", () => {
-    // 13 primitives + the barrel. A bundled build would collapse these.
+    // 13 primitives + the focus-trap hook + the barrel. A bundled build would
+    // collapse these.
     expect(built.map((b) => b.file).sort()).toEqual(
       [
         "Badge.js",
@@ -65,8 +66,16 @@ describe("built UI output", () => {
         "StatTile.js",
         "StatusBadge.js",
         "index.js",
+        "useFocusTrap.js",
       ].sort(),
     );
+  });
+
+  it("routes Sheet's trap through the shared hook — the point of R2-5a", () => {
+    // Three implementations collapsed into one; a Sheet that regrows its own
+    // inline trap silently reopens the drift this consolidation closed.
+    const sheet = built.find((b) => b.file === "Sheet.js")!;
+    expect(sheet.text).toContain('from "./useFocusTrap.js"');
   });
 
   it.each(CLIENT_MODULES)("keeps the \"use client\" directive at the top of %s", (file) => {

@@ -36,6 +36,7 @@ export default defineConfig([
       forecast: "src/lib/domain/forecast/index.ts",
       rules: "src/lib/domain/rules/index.ts",
       policy: "src/lib/domain/policy/index.ts",
+      freshness: "src/lib/domain/facts/freshness.ts",
       types: "src/lib/domain/types.ts",
       money: "src/lib/utils/money.ts",
       seed: "src/lib/seed/scenarios.ts",

@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "../../lib/utils/cn.js";
-
-const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+import { useFocusTrap } from "./useFocusTrap.js";
 
 const EXIT_MS = 200;
 
@@ -68,55 +66,25 @@ export function Sheet({
     return () => clearTimeout(timer);
   }, [open]);
 
-  // Focus management, scroll lock, and key handling while open.
+  // Capture the return target BEFORE the trap arms. Effects run in declaration
+  // order, so this reads the trigger while it still has focus; the hook then
+  // reads the ref once, on arm. Declared ahead of `useFocusTrap` on purpose —
+  // swapping them hands the trap a stale (or null) return target.
   useEffect(() => {
-    if (!open || !rendered) return;
+    if (open && rendered) {
+      previouslyFocused.current = document.activeElement as HTMLElement | null;
+    }
+  }, [open, rendered]);
 
-    previouslyFocused.current = document.activeElement as HTMLElement | null;
-    const body = document.body;
-    const previousOverflow = body.style.overflow;
-    body.style.overflow = "hidden";
-
-    const panel = panelRef.current;
-    const focusables = panel?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-    (focusables && focusables.length > 0 ? focusables[0]! : panel)?.focus();
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onOpenChange(false);
-        return;
-      }
-      if (event.key !== "Tab" || !panel) return;
-
-      const items = Array.from(
-        panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
-      ).filter((el) => el.offsetParent !== null);
-      if (items.length === 0) {
-        event.preventDefault();
-        panel.focus();
-        return;
-      }
-
-      const first = items[0]!;
-      const last = items[items.length - 1]!;
-      const active = document.activeElement;
-      if (event.shiftKey && active === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && active === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      body.style.overflow = previousOverflow;
-      previouslyFocused.current?.focus?.();
-    };
-  }, [open, rendered, onOpenChange]);
+  // Focus management, scroll lock, and key handling while open — the shared
+  // trap (R2-5a), not a Sheet-private variant of it.
+  const handleEscape = useCallback(() => onOpenChange(false), [onOpenChange]);
+  useFocusTrap({
+    active: open && rendered,
+    containerRef: panelRef,
+    returnFocusRef: previouslyFocused,
+    onEscape: handleEscape,
+  });
 
   if (!mounted || !rendered) return null;
 
