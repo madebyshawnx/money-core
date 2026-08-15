@@ -29,6 +29,18 @@ A versioned dependency makes 1–4 and 6 structurally impossible rather than
 merely detectable, and turns 5 into a visible semver decision instead of a
 surprise.
 
+### Versioning policy (MC-1)
+
+The rationale above was unimplemented for the package's first twelve commits:
+`0.1.0` throughout, including a public API addition, with no tags. The policy
+now is: **every merge to `main` that changes `src/` bumps `version` in the
+same PR** (patch for fixes, minor for API additions, major for breaks — the
+AI-policy validator's rules count as API), **and the merge commit is tagged
+`v<version>`**. Consumption stays SHA-pinned by the three consumers; the
+version and tag exist so a human reading a pin, a diff, or a changelog can
+tell WHAT KIND of change sits between two pins without reading every commit.
+Dep-only and CI-only merges do not bump.
+
 ## Invariants
 
 - **Money is integer cents.** Negative = outflow. Every engine assumes it.
