@@ -111,7 +111,7 @@ describe("useFocusTrap", () => {
             <button style={{ display: "none" }}>hidden first</button>
             <button>visible first</button>
             <button>visible last</button>
-            <button style={{ display: "none" }}>hidden last</button>
+            <button style={{ visibility: "hidden" }}>hidden last</button>
           </div>
         </div>
       );
@@ -128,6 +128,32 @@ describe("useFocusTrap", () => {
 
     await user.tab({ shift: true });
     expect(screen.getByRole("button", { name: "visible last" })).toHaveFocus();
+  });
+
+  it("prefers the element's own checkVisibility() and asks it about the visibility property", async () => {
+    // jsdom has no checkVisibility, so the browser branch only runs when the
+    // element provides one — this pins both that it wins over computed style
+    // and that it is asked about `visibility`, which a bare checkVisibility()
+    // call does not check.
+    const user = userEvent.setup();
+    render(<Harness active />);
+
+    const last = screen.getByRole("button", { name: "last" });
+    const seenOptions: unknown[] = [];
+    (last as HTMLElement & { checkVisibility: (o?: unknown) => boolean }).checkVisibility = (
+      options?: unknown,
+    ) => {
+      seenOptions.push(options);
+      return false;
+    };
+
+    // With "last" reporting itself invisible, "middle" is the real boundary.
+    screen.getByRole("button", { name: "middle" }).focus();
+    await user.tab();
+    expect(screen.getByRole("button", { name: "first" })).toHaveFocus();
+
+    expect(seenOptions.length).toBeGreaterThan(0);
+    expect(seenOptions[0]).toMatchObject({ checkVisibilityCSS: true, visibilityProperty: true });
   });
 
   it("parks focus on the container and keeps Tab from escaping when nothing inside is focusable", async () => {

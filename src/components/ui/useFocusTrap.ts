@@ -29,7 +29,14 @@ const FOCUSABLE_SELECTOR =
  * answer, and an unstyled element is visible in both worlds.
  */
 function isVisible(el: HTMLElement): boolean {
-  if (typeof el.checkVisibility === "function") return el.checkVisibility();
+  if (typeof el.checkVisibility === "function") {
+    // Bare checkVisibility() checks display only. Both option spellings are
+    // passed because the spec renamed `checkVisibilityCSS` to
+    // `visibilityProperty` mid-flight; engines honour the one they know, and
+    // either way `visibility: hidden` must disqualify a boundary exactly as
+    // the fallback below says it does.
+    return el.checkVisibility({ checkVisibilityCSS: true, visibilityProperty: true });
+  }
   const style = el.ownerDocument.defaultView?.getComputedStyle(el);
   return style ? style.display !== "none" && style.visibility !== "hidden" : true;
 }
