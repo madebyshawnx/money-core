@@ -63,6 +63,13 @@ function report(ctx: Ctx, code: string, path: string, message: string, actual?: 
 
 // ---------------------------------------------------------------------------
 // Leaf validators — every reader records an issue instead of throwing
+//
+// NULL-AS-ABSENCE, deliberately: every optional validator treats `null` the
+// same as a missing key. JSON has no `undefined`, so a producer that writes
+// `categoryId: null` is expressing absence in JSON's native idiom; rejecting
+// it would fail bundles over a spelling difference the wire format itself
+// invites. Canonicalization then OMITS absent fields, so `null` never
+// round-trips — the canonical bytes have one spelling of absence.
 // ---------------------------------------------------------------------------
 
 function requireString(ctx: Ctx, value: unknown, path: string): string {
@@ -91,17 +98,21 @@ function optionalBool(ctx: Ctx, value: unknown, path: string): boolean | undefin
   return undefined;
 }
 
-/** Money is an integer count of cents — a fractional or string amount is corruption. */
+/**
+ * Money is an integer count of cents — a fractional or string amount is
+ * corruption. SAFE integers only: JSON.parse has already rounded anything
+ * beyond 2^53-1, so accepting it would accept a silently different amount.
+ */
 function requireCents(ctx: Ctx, value: unknown, path: string): number {
-  if (typeof value === "number" && Number.isInteger(value)) return value;
-  report(ctx, "not_integer_cents", path, "must be an integer number of cents", value);
+  if (typeof value === "number" && Number.isSafeInteger(value)) return value;
+  report(ctx, "not_integer_cents", path, "must be a safe-integer number of cents", value);
   return 0;
 }
 
 function optionalCents(ctx: Ctx, value: unknown, path: string): number | undefined {
   if (value === undefined || value === null) return undefined;
-  if (typeof value === "number" && Number.isInteger(value)) return value;
-  report(ctx, "not_integer_cents", path, "must be an integer number of cents when present", value);
+  if (typeof value === "number" && Number.isSafeInteger(value)) return value;
+  report(ctx, "not_integer_cents", path, "must be a safe-integer number of cents when present", value);
   return undefined;
 }
 
@@ -112,8 +123,8 @@ function requireCentsOrNull(ctx: Ctx, value: unknown, path: string, present: boo
     return null;
   }
   if (value === null) return null;
-  if (typeof value === "number" && Number.isInteger(value)) return value;
-  report(ctx, "not_integer_cents", path, "must be an integer number of cents or null", value);
+  if (typeof value === "number" && Number.isSafeInteger(value)) return value;
+  report(ctx, "not_integer_cents", path, "must be a safe-integer number of cents or null", value);
   return null;
 }
 
@@ -134,15 +145,29 @@ function stringArray(ctx: Ctx, value: unknown, path: string): string[] {
     report(ctx, "not_array", path, "must be an array of strings", value);
     return [];
   }
-  return value.map((entry, i) => requireString(ctx, entry, `${path}[${i}]`));
+  const out: string[] = [];
+  for (let i = 0; i < value.length; i += 1) {
+    out.push(requireString(ctx, value[i], `${path}[${i}]`));
+  }
+  return out;
 }
 
-/** ISO-ish string (wire) or valid Date (runtime) — nothing else parses as a date. */
+/**
+ * The wire grammar: exactly what the serializer emits (`Date.toISOString()` —
+ * `YYYY-MM-DDTHH:mm:ss.sssZ`), plus second-precision, explicit offsets, and
+ * the date-only form. NOTHING looser: `new Date("0")` parses as the year
+ * 2000 in Node and `new Date("08/15/2026")` is locale/engine-dependent, so an
+ * unanchored `new Date(string)` would accept values the contract never
+ * defined and mint environment-dependent timestamps from them.
+ */
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{1,3})?(Z|[+-]\d{2}:\d{2}))?$/;
+
+/** ISO string (wire) or valid Date (runtime) — nothing else parses as a date. */
 function parseDateLeaf(ctx: Ctx, value: unknown): Date | null {
   if (ctx.mode === "runtime") {
     return value instanceof Date && !Number.isNaN(value.getTime()) ? value : null;
   }
-  if (typeof value !== "string") return null;
+  if (typeof value !== "string" || !ISO_DATE.test(value)) return null;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
 }
@@ -234,10 +259,13 @@ function rows<T>(
     return [];
   }
   const out: T[] = [];
-  value.forEach((entry, i) => {
-    const row = asRecord(ctx, entry, `${path}[${i}]`);
+  // Numeric iteration, not forEach: forEach SKIPS sparse holes, so
+  // `new Array(1)` would validate clean and then serialize as `[null]` —
+  // bytes this contract's own parser refuses.
+  for (let i = 0; i < value.length; i += 1) {
+    const row = asRecord(ctx, value[i], `${path}[${i}]`);
     if (row) out.push(walk(ctx, row, `${path}[${i}]`));
-  });
+  }
   return out;
 }
 

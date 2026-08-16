@@ -23,6 +23,11 @@
  */
 
 import type { AccountType, ConnectionStatus, RecurringFrequency, RecurringType } from "@/lib/domain/types";
+import type {
+  ProviderAccountDto,
+  ProviderBalanceDto,
+  ProviderTransactionDto,
+} from "@/lib/providers/financial-data/types";
 import type { Cents } from "@/lib/utils/money";
 
 export const INTEROP_VERSION = 3;
@@ -34,42 +39,25 @@ export type InteropOpportunityEffort = "LOW" | "MEDIUM" | "HIGH";
 
 // ---------------------------------------------------------------------------
 // Runtime shape — dates are Date instances
+//
+// The runtime DTOs EXTEND the package's own provider DTOs rather than
+// restating their fields — restating them would rebuild, inside one package,
+// the exact mirror-type drift R2-15 exists to remove. Only the wire DTOs
+// below are spelled out field-by-field, because required/null/optional at
+// the serialization boundary is precisely where the historical drift lived
+// and must stay reviewable at a glance.
 // ---------------------------------------------------------------------------
 
-export interface InteropAccountDto {
-  providerAccountId: string;
-  displayName: string;
-  officialName?: string;
-  mask?: string;
-  type: AccountType;
-  subtype?: string;
-  currencyCode: string;
+export interface InteropAccountDto extends ProviderAccountDto {
   status: InteropAccountStatus;
   lastSuccessfulSyncAt?: Date;
   includeInNetWorth?: boolean;
 }
 
-export interface InteropBalanceDto {
-  providerAccountId: string;
-  currentCents: Cents;
-  availableCents?: Cents;
-  currencyCode: string;
-  capturedAt: Date;
-}
+export type InteropBalanceDto = ProviderBalanceDto;
 
-export interface InteropTransactionDto {
-  providerTransactionId: string;
-  providerAccountId: string;
-  providerPendingTransactionId?: string;
-  transactionDate: Date;
-  authorizedDate?: Date;
-  postedAt?: Date;
-  amountCents: Cents;
-  currencyCode: string;
-  merchantName?: string;
-  description?: string;
-  isPending: boolean;
-  isRemoved?: boolean;
+export interface InteropTransactionDto extends ProviderTransactionDto {
+  /** Manager-confirmed category for the transaction. */
   categoryId?: string;
 }
 
@@ -113,7 +101,7 @@ export interface InteropOptimizerOpportunityDto {
 }
 
 export interface InteropBundle {
-  interopVersion: number;
+  interopVersion: typeof INTEROP_VERSION;
   provider: "MONEY_MANAGER";
   householdId: string;
   exportedAt: Date;
@@ -182,7 +170,7 @@ export interface InteropRecurringObligationWire {
 }
 
 export interface InteropBundleWire {
-  interopVersion: number;
+  interopVersion: typeof INTEROP_VERSION;
   provider: "MONEY_MANAGER";
   householdId: string;
   exportedAt: string;

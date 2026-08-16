@@ -178,6 +178,44 @@ describe("parseInteropBundleText — failure classes", () => {
     expect(issuePaths(badFreq)).toContain("recurringObligations[0].frequency");
   });
 
+  it("rejects sparse array slots instead of validating past them", () => {
+    // `new Array(1)` has length 1 and no elements. forEach/map skip the hole,
+    // so an unguarded walker would validate it as fine and then SERIALIZE it
+    // as [null] — bytes the package's own parser refuses.
+    const sparse = parseInteropBundleText(
+      corrupted((wire) => (wire.accounts = new Array(1))),
+    );
+    expect(sparse.ok).toBe(false);
+    expect(issuePaths(sparse)).toContain("accounts[0]");
+
+    const bundle = goldenBundle();
+    const holed: InteropBundle = { ...bundle, accounts: new Array(2) as never };
+    const serialized = serializeInteropBundle(holed);
+    expect(serialized.ok).toBe(false);
+  });
+
+  it("rejects non-ISO date strings, including the ones new Date() would happily coerce", () => {
+    // "0" parses as 2000-01-01 in Node; "08/15/2026" is locale/engine
+    // dependent. The wire contract is toISOString output — nothing else.
+    for (const value of ["0", "08/15/2026", "August 15 2026", "1755219600000"]) {
+      const result = parseInteropBundleText(corrupted((wire) => (wire.exportedAt = value)));
+      expect(result.ok, `exportedAt=${value}`).toBe(false);
+    }
+    // The two shapes the producer actually writes stay accepted.
+    for (const value of ["2026-08-15T12:00:00.000Z", "2026-08-15"]) {
+      const result = parseInteropBundleText(corrupted((wire) => (wire.exportedAt = value)));
+      expect(result.ok, `exportedAt=${value}`).toBe(true);
+    }
+  });
+
+  it("rejects cents beyond Number.MAX_SAFE_INTEGER — JSON already rounded them", () => {
+    const result = parseInteropBundleText(
+      corrupted((wire) => (wire.transactions[0].amountCents = 9007199254740993)),
+    );
+    expect(result.ok).toBe(false);
+    expect(issuePaths(result)).toContain("transactions[0].amountCents");
+  });
+
   it("rejects non-integer and non-numeric cents", () => {
     const fractional = parseInteropBundleText(
       corrupted((wire) => (wire.transactions[0].amountCents = 12.5)),
@@ -255,6 +293,12 @@ describe("serializeInteropBundle — the canonical producer", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.text.replace(/\r\n/g, "\n")).toBe(fixtureText().replace(/\r\n/g, "\n"));
+    // The serializer's own bytes are strictly canonical: LF only, exactly one
+    // trailing newline (the CRLF normalization above tolerates the FIXTURE's
+    // checkout state, never the serializer's output).
+    expect(result.text).not.toContain("\r");
+    expect(result.text.endsWith("\n")).toBe(true);
+    expect(result.text.endsWith("\n\n")).toBe(false);
   });
 
   it("refuses to emit an invalid bundle instead of serializing corruption", () => {
