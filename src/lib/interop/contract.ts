@@ -162,12 +162,39 @@ function stringArray(ctx: Ctx, value: unknown, path: string): string[] {
  */
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{1,3})?(Z|[+-]\d{2}:\d{2}))?$/;
 
+const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] as const;
+
+/**
+ * Grammar is not enough: `new Date("2026-02-29")` silently normalizes to
+ * March 1 in Node — corrupt wire data becoming a DIFFERENT valid date with no
+ * issue raised, the exact silent-coercion class this validator exists to
+ * stop. So the calendar components are checked as written, before `new Date`
+ * ever sees the string.
+ */
+function isRealCalendarInstant(value: string): boolean {
+  const year = Number(value.slice(0, 4));
+  const month = Number(value.slice(5, 7));
+  const day = Number(value.slice(8, 10));
+  if (month < 1 || month > 12) return false;
+  const isLeap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+  const maxDay = month === 2 && isLeap ? 29 : DAYS_IN_MONTH[month - 1]!;
+  if (day < 1 || day > maxDay) return false;
+  if (value.length > 10) {
+    const hours = Number(value.slice(11, 13));
+    const minutes = Number(value.slice(14, 16));
+    const seconds = Number(value.slice(17, 19));
+    // Hour 24 and leap seconds are engine-dependent readings, not contract.
+    if (hours > 23 || minutes > 59 || seconds > 59) return false;
+  }
+  return true;
+}
+
 /** ISO string (wire) or valid Date (runtime) — nothing else parses as a date. */
 function parseDateLeaf(ctx: Ctx, value: unknown): Date | null {
   if (ctx.mode === "runtime") {
     return value instanceof Date && !Number.isNaN(value.getTime()) ? value : null;
   }
-  if (typeof value !== "string" || !ISO_DATE.test(value)) return null;
+  if (typeof value !== "string" || !ISO_DATE.test(value) || !isRealCalendarInstant(value)) return null;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
 }

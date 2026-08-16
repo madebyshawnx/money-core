@@ -201,10 +201,32 @@ describe("parseInteropBundleText — failure classes", () => {
       const result = parseInteropBundleText(corrupted((wire) => (wire.exportedAt = value)));
       expect(result.ok, `exportedAt=${value}`).toBe(false);
     }
-    // The two shapes the producer actually writes stay accepted.
-    for (const value of ["2026-08-15T12:00:00.000Z", "2026-08-15"]) {
+    // The two shapes the producer actually writes stay accepted, plus a leap
+    // day that really exists and an explicit offset.
+    for (const value of [
+      "2026-08-15T12:00:00.000Z",
+      "2026-08-15",
+      "2024-02-29",
+      "2026-08-15T12:00:00+05:30",
+    ]) {
       const result = parseInteropBundleText(corrupted((wire) => (wire.exportedAt = value)));
       expect(result.ok, `exportedAt=${value}`).toBe(true);
+    }
+  });
+
+  it("rejects impossible calendar dates instead of letting new Date() normalize them", () => {
+    // Node silently rolls these forward: 2026-02-29 → March 1, 2026-04-31 →
+    // May 1. Corrupt wire data becoming a DIFFERENT valid date with no issue
+    // is exactly the silent-coercion class this validator exists to stop.
+    for (const value of [
+      "2026-02-29", // 2026 is not a leap year
+      "2026-02-30",
+      "2026-04-31",
+      "2026-02-30T12:00:00Z",
+      "2026-08-15T24:00:00Z", // hour 24 is engine-dependent, not contract
+    ]) {
+      const result = parseInteropBundleText(corrupted((wire) => (wire.exportedAt = value)));
+      expect(result.ok, `exportedAt=${value}`).toBe(false);
     }
   });
 
