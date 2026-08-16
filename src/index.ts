@@ -49,3 +49,4 @@ export * as forecast from "@/lib/domain/forecast";
 export * as rules from "@/lib/domain/rules";
 export * as policy from "@/lib/domain/policy";
 export * as freshness from "@/lib/domain/facts/freshness";
+export * as interop from "@/lib/interop";
