@@ -37,6 +37,7 @@ export default defineConfig([
       rules: "src/lib/domain/rules/index.ts",
       policy: "src/lib/domain/policy/index.ts",
       freshness: "src/lib/domain/facts/freshness.ts",
+      interop: "src/lib/interop/index.ts",
       types: "src/lib/domain/types.ts",
       money: "src/lib/utils/money.ts",
       seed: "src/lib/seed/scenarios.ts",

@@ -1,0 +1,317 @@
+{
+  "interopVersion": 3,
+  "provider": "MONEY_MANAGER",
+  "householdId": "hh_rivera",
+  "exportedAt": "2026-07-11T12:00:00.000Z",
+  "accounts": [
+    {
+      "providerAccountId": "mock-acct-checking",
+      "displayName": "Everyday Checking",
+      "officialName": "Evergreen Everyday Checking",
+      "mask": "4021",
+      "type": "CHECKING",
+      "subtype": "checking",
+      "currencyCode": "USD",
+      "status": "ACTIVE",
+      "lastSuccessfulSyncAt": "2026-07-11T10:00:00.000Z",
+      "includeInNetWorth": true
+    },
+    {
+      "providerAccountId": "mock-acct-savings",
+      "displayName": "Rainy Day Savings",
+      "officialName": "Evergreen High-Yield Savings",
+      "mask": "7788",
+      "type": "SAVINGS",
+      "subtype": "savings",
+      "currencyCode": "USD",
+      "status": "ACTIVE",
+      "lastSuccessfulSyncAt": "2026-07-11T10:00:00.000Z",
+      "includeInNetWorth": true
+    },
+    {
+      "providerAccountId": "mock-acct-credit",
+      "displayName": "Summit Rewards Card",
+      "officialName": "Summit Rewards Visa",
+      "mask": "9931",
+      "type": "CREDIT_CARD",
+      "subtype": "credit card",
+      "currencyCode": "USD",
+      "status": "STALE",
+      "lastSuccessfulSyncAt": "2026-07-10T14:00:00.000Z",
+      "includeInNetWorth": true
+    },
+    {
+      "providerAccountId": "mock-acct-legacy",
+      "displayName": "Old Union Checking",
+      "mask": "1102",
+      "type": "CHECKING",
+      "subtype": "checking",
+      "currencyCode": "USD",
+      "status": "DISCONNECTED",
+      "lastSuccessfulSyncAt": "2026-06-11T12:00:00.000Z",
+      "includeInNetWorth": false
+    }
+  ],
+  "balances": [
+    {
+      "providerAccountId": "mock-acct-checking",
+      "currentCents": 245000,
+      "availableCents": 241000,
+      "currencyCode": "USD",
+      "capturedAt": "2026-07-11T10:00:00.000Z"
+    },
+    {
+      "providerAccountId": "mock-acct-savings",
+      "currentCents": 830000,
+      "availableCents": 830000,
+      "currencyCode": "USD",
+      "capturedAt": "2026-07-11T10:00:00.000Z"
+    },
+    {
+      "providerAccountId": "mock-acct-credit",
+      "currentCents": -142500,
+      "availableCents": 357500,
+      "currencyCode": "USD",
+      "capturedAt": "2026-07-10T14:00:00.000Z"
+    },
+    {
+      "providerAccountId": "mock-acct-legacy",
+      "currentCents": 15200,
+      "currencyCode": "USD",
+      "capturedAt": "2026-06-11T12:00:00.000Z"
+    }
+  ],
+  "transactions": [
+    {
+      "providerTransactionId": "mock-txn-pay-1",
+      "providerAccountId": "mock-acct-checking",
+      "transactionDate": "2026-06-30T12:00:00.000Z",
+      "postedAt": "2026-06-30T12:00:00.000Z",
+      "amountCents": 412000,
+      "currencyCode": "USD",
+      "merchantName": "Northwind Payroll",
+      "description": "ACH CREDIT DIRECT DEPOSIT",
+      "isPending": false,
+      "categoryId": "cat_rivera_income"
+    },
+    {
+      "providerTransactionId": "mock-txn-mtg-1",
+      "providerAccountId": "mock-acct-checking",
+      "transactionDate": "2026-07-01T12:00:00.000Z",
+      "postedAt": "2026-07-01T12:00:00.000Z",
+      "amountCents": -215000,
+      "currencyCode": "USD",
+      "merchantName": "Cascade Mortgage",
+      "description": "WEB PMT CASCADE MORTGAGE",
+      "isPending": false,
+      "categoryId": "cat_rivera_housing"
+    },
+    {
+      "providerTransactionId": "mock-txn-dc-1",
+      "providerAccountId": "mock-acct-checking",
+      "transactionDate": "2026-07-02T12:00:00.000Z",
+      "postedAt": "2026-07-02T12:00:00.000Z",
+      "amountCents": -132000,
+      "currencyCode": "USD",
+      "merchantName": "Little Sprouts Daycare",
+      "isPending": false,
+      "categoryId": "cat_rivera_childcare"
+    },
+    {
+      "providerTransactionId": "mock-txn-util-1",
+      "providerAccountId": "mock-acct-checking",
+      "transactionDate": "2026-07-02T12:00:00.000Z",
+      "postedAt": "2026-07-02T12:00:00.000Z",
+      "amountCents": -18500,
+      "currencyCode": "USD",
+      "merchantName": "City Utilities",
+      "isPending": false,
+      "categoryId": "cat_rivera_utilities"
+    },
+    {
+      "providerTransactionId": "mock-txn-nflx-1",
+      "providerAccountId": "mock-acct-credit",
+      "transactionDate": "2026-07-03T12:00:00.000Z",
+      "postedAt": "2026-07-03T12:00:00.000Z",
+      "amountCents": -1899,
+      "currencyCode": "USD",
+      "merchantName": "Netflix",
+      "isPending": false,
+      "categoryId": "cat_rivera_subscriptions"
+    },
+    {
+      "providerTransactionId": "mock-txn-costco-1",
+      "providerAccountId": "mock-acct-credit",
+      "transactionDate": "2026-07-04T12:00:00.000Z",
+      "postedAt": "2026-07-04T12:00:00.000Z",
+      "amountCents": -18932,
+      "currencyCode": "USD",
+      "merchantName": "Costco",
+      "isPending": false,
+      "categoryId": "cat_rivera_groceries"
+    },
+    {
+      "providerTransactionId": "mock-txn-apple-1",
+      "providerAccountId": "mock-acct-credit",
+      "transactionDate": "2026-07-05T12:00:00.000Z",
+      "postedAt": "2026-07-05T12:00:00.000Z",
+      "amountCents": -999,
+      "currencyCode": "USD",
+      "merchantName": "Apple",
+      "isPending": false,
+      "categoryId": "cat_rivera_subscriptions"
+    },
+    {
+      "providerTransactionId": "mock-txn-cloudfit-1",
+      "providerAccountId": "mock-acct-credit",
+      "transactionDate": "2026-07-05T12:00:00.000Z",
+      "postedAt": "2026-07-05T12:00:00.000Z",
+      "amountCents": -2999,
+      "currencyCode": "USD",
+      "merchantName": "CloudFit",
+      "isPending": false,
+      "categoryId": "cat_rivera_subscriptions"
+    },
+    {
+      "providerTransactionId": "mock-txn-dining-pending",
+      "providerAccountId": "mock-acct-credit",
+      "transactionDate": "2026-07-10T12:00:00.000Z",
+      "amountCents": -4200,
+      "currencyCode": "USD",
+      "merchantName": "Osteria Verde",
+      "isPending": true,
+      "categoryId": "cat_rivera_dining"
+    },
+    {
+      "providerTransactionId": "mock-txn-dining-posted",
+      "providerAccountId": "mock-acct-credit",
+      "providerPendingTransactionId": "mock-txn-dining-pending",
+      "transactionDate": "2026-07-11T04:00:00.000Z",
+      "postedAt": "2026-07-11T04:00:00.000Z",
+      "amountCents": -4956,
+      "currencyCode": "USD",
+      "merchantName": "Osteria Verde",
+      "isPending": false,
+      "categoryId": "cat_rivera_dining"
+    }
+  ],
+  "categories": [
+    {
+      "id": "cat_rivera_income",
+      "name": "Income"
+    },
+    {
+      "id": "cat_rivera_groceries",
+      "name": "Groceries"
+    },
+    {
+      "id": "cat_rivera_dining",
+      "name": "Dining & Restaurants"
+    },
+    {
+      "id": "cat_rivera_shopping",
+      "name": "Shopping"
+    },
+    {
+      "id": "cat_rivera_housing",
+      "name": "Housing"
+    },
+    {
+      "id": "cat_rivera_childcare",
+      "name": "Childcare"
+    },
+    {
+      "id": "cat_rivera_utilities",
+      "name": "Utilities"
+    },
+    {
+      "id": "cat_rivera_subscriptions",
+      "name": "Subscriptions"
+    },
+    {
+      "id": "cat_rivera_transfers",
+      "name": "Transfers"
+    }
+  ],
+  "recurringObligations": [
+    {
+      "id": "rec_rivera_paycheck",
+      "name": "Paycheck — Maria",
+      "merchantNormalized": "Northwind Payroll",
+      "amountCents": 412000,
+      "frequency": "BIWEEKLY",
+      "type": "PAYCHECK",
+      "isActive": true,
+      "isConfirmed": true,
+      "includeInForecast": true,
+      "nextExpectedDate": "2026-07-14T12:00:00.000Z",
+      "accountId": "mock-acct-checking"
+    },
+    {
+      "id": "rec_rivera_mortgage",
+      "name": "Mortgage",
+      "merchantNormalized": "Cascade Mortgage",
+      "amountCents": -215000,
+      "frequency": "MONTHLY",
+      "type": "BILL",
+      "isActive": true,
+      "isConfirmed": true,
+      "includeInForecast": true,
+      "nextExpectedDate": "2026-07-31T12:00:00.000Z",
+      "accountId": "mock-acct-checking"
+    },
+    {
+      "id": "rec_rivera_daycare",
+      "name": "Little Sprouts Daycare",
+      "merchantNormalized": "Little Sprouts Daycare",
+      "amountCents": -132000,
+      "frequency": "MONTHLY",
+      "type": "BILL",
+      "isActive": true,
+      "isConfirmed": true,
+      "includeInForecast": true,
+      "nextExpectedDate": "2026-07-13T12:00:00.000Z",
+      "accountId": "mock-acct-checking"
+    },
+    {
+      "id": "rec_rivera_utilities",
+      "name": "City Utilities",
+      "merchantNormalized": "City Utilities",
+      "amountCents": -18500,
+      "frequency": "MONTHLY",
+      "type": "BILL",
+      "isActive": true,
+      "isConfirmed": true,
+      "includeInForecast": true,
+      "nextExpectedDate": "2026-07-12T12:00:00.000Z",
+      "accountId": "mock-acct-checking"
+    },
+    {
+      "id": "rec_rivera_water_unknown",
+      "name": "Water service",
+      "merchantNormalized": "Water service",
+      "amountCents": null,
+      "frequency": "MONTHLY",
+      "type": "BILL",
+      "isActive": true,
+      "isConfirmed": true,
+      "includeInForecast": true,
+      "nextExpectedDate": "2026-07-20T12:00:00.000Z",
+      "accountId": "mock-acct-checking"
+    },
+    {
+      "id": "rec_rivera_netflix",
+      "name": "Netflix",
+      "merchantNormalized": "Netflix",
+      "amountCents": -1899,
+      "frequency": "MONTHLY",
+      "type": "SUBSCRIPTION",
+      "isActive": true,
+      "isConfirmed": true,
+      "includeInForecast": true,
+      "nextExpectedDate": "2026-07-17T12:00:00.000Z",
+      "accountId": "mock-acct-credit"
+    }
+  ],
+  "optimizerOpportunities": []
+}
