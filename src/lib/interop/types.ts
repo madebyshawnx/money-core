@@ -22,7 +22,13 @@
  * drifted, and they must be reviewable at a glance.
  */
 
-import type { AccountType, ConnectionStatus, RecurringFrequency, RecurringType } from "@/lib/domain/types";
+import type {
+  AccountType,
+  ConnectionStatus,
+  RecurringFrequency,
+  RecurringType,
+  TransactionState,
+} from "@/lib/domain/types";
 import type {
   ProviderAccountDto,
   ProviderBalanceDto,
@@ -30,7 +36,16 @@ import type {
 } from "@/lib/providers/financial-data/types";
 import type { Cents } from "@/lib/utils/money";
 
-export const INTEROP_VERSION = 3;
+/**
+ * v4 (R2-21): transactions now carry `state`. Without it, a consumer had no
+ * way to tell a POSTED-and-reviewed row from one still sitting in the
+ * producer's NEEDS_REVIEW inbox, so Cadence re-derived POSTED/confidence-100
+ * for every ingested row — its own "needs review" fact structurally could
+ * not agree with the producer's for the same data. Version-exact parsing
+ * (contract.ts) means this is a real break: a v3 bundle is refused, not
+ * silently accepted with a guessed state.
+ */
+export const INTEROP_VERSION = 4;
 
 /** Connection status as exported — `DELETED` is mapped away by the producer. */
 export type InteropAccountStatus = Exclude<ConnectionStatus, "DELETED">;
@@ -59,6 +74,12 @@ export type InteropBalanceDto = ProviderBalanceDto;
 export interface InteropTransactionDto extends ProviderTransactionDto {
   /** Manager-confirmed category for the transaction. */
   categoryId?: string;
+  /**
+   * v4: the producer's own ledger state — REQUIRED, never derived by a
+   * consumer. Every transaction in a producer's dataset has a state; there
+   * is no meaningful "unknown state" to make optional here.
+   */
+  state: TransactionState;
 }
 
 export interface InteropCategoryDto {
@@ -152,6 +173,7 @@ export interface InteropTransactionWire {
   isPending: boolean;
   isRemoved?: boolean;
   categoryId?: string;
+  state: TransactionState;
 }
 
 export interface InteropRecurringObligationWire {

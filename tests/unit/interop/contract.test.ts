@@ -35,7 +35,7 @@ import {
   type InteropBundle,
 } from "@/lib/interop";
 
-const FIXTURE = resolve(__dirname, "../../fixtures/interop-bundle-v3.json");
+const FIXTURE = resolve(__dirname, "../../fixtures/interop-bundle-v4.json");
 
 function fixtureText(): string {
   return readFileSync(FIXTURE, "utf8");
@@ -72,6 +72,19 @@ describe("parseInteropBundleText — acceptance", () => {
     expect(result.bundle.exportedAt).toBeInstanceOf(Date);
     expect(result.bundle.transactions[0]!.transactionDate).toBeInstanceOf(Date);
     expect(result.warnings).toEqual([]);
+  });
+
+  it("carries the producer's transaction state — R2-21, the field a consumer used to have to guess", () => {
+    const result = parseInteropBundleText(fixtureText());
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    // Mixed on purpose: POSTED, AUTO_CLASSIFIED and PENDING all appear in the
+    // golden fixture, so a consumer reading only POSTED would undercount.
+    const states = new Set(result.bundle.transactions.map((t) => t.state));
+    expect(states.has("POSTED")).toBe(true);
+    expect(states.has("AUTO_CLASSIFIED")).toBe(true);
+    expect(states.has("PENDING")).toBe(true);
   });
 
   it("keeps recurring categoryId — the field the consumer's mirror type dropped", () => {
@@ -122,9 +135,9 @@ describe("parseInteropBundleText — failure classes", () => {
   });
 
   it("distinguishes unsupported_version from corruption, even when the body would not validate", () => {
-    // A v4 bundle with a shape this version has never seen must still diagnose
-    // as "upgrade required", not "corrupt export" — the version check runs
-    // before structural validation.
+    // A future-version bundle with a shape this version has never seen must
+    // still diagnose as "upgrade required", not "corrupt export" — the
+    // version check runs before structural validation.
     const future = parseInteropBundleText(
       JSON.stringify({ interopVersion: INTEROP_VERSION + 1, someFutureShape: true }),
     );
@@ -176,6 +189,14 @@ describe("parseInteropBundleText — failure classes", () => {
       corrupted((wire) => (wire.recurringObligations[0].frequency = "FORTNIGHTLY")),
     );
     expect(issuePaths(badFreq)).toContain("recurringObligations[0].frequency");
+
+    // R2-21: state is not a free-form string a consumer could misread as a
+    // fact it never sent — the wire enum is exact, matching the producer's
+    // own TransactionState values, so drift is refused rather than guessed.
+    const badState = parseInteropBundleText(
+      corrupted((wire) => (wire.transactions[0].state = "ARCHIVED")),
+    );
+    expect(issuePaths(badState)).toContain("transactions[0].state");
   });
 
   it("rejects sparse array slots instead of validating past them", () => {
@@ -369,7 +390,7 @@ describe("validateInteropBundle — in-memory producer check", () => {
 describe.skipIf(!existsSync("C:/dev/money-manager"))("sibling fixture identity", () => {
   it("matches Money Manager's golden fixture byte-for-byte", () => {
     const sibling = readFileSync(
-      join("C:/dev/money-manager", "tests/fixtures/interop-bundle-v3.json"),
+      join("C:/dev/money-manager", "tests/fixtures/interop-bundle-v4.json"),
       "utf8",
     ).replace(/\r\n/g, "\n");
     expect(fixtureText().replace(/\r\n/g, "\n")).toBe(sibling);
