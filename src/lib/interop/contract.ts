@@ -27,7 +27,7 @@
  *     corruption for the consumer to degrade.
  */
 
-import type { AccountType, RecurringFrequency, RecurringType } from "@/lib/domain/types";
+import type { AccountType, RecurringFrequency, RecurringType, TransactionState } from "@/lib/domain/types";
 import {
   INTEROP_VERSION,
   type InteropAccountDto,
@@ -258,6 +258,19 @@ const FREQUENCIES: readonly RecurringFrequency[] = [
 ];
 const RECURRING_TYPES: readonly RecurringType[] = ["BILL", "SUBSCRIPTION", "PAYCHECK", "TRANSFER", "OTHER"];
 const EFFORTS: readonly InteropOpportunityEffort[] = ["LOW", "MEDIUM", "HIGH"];
+const TRANSACTION_STATES: readonly TransactionState[] = [
+  "PENDING",
+  "POSTED",
+  "REMOVED",
+  "NEEDS_REVIEW",
+  "AUTO_CLASSIFIED",
+  "USER_CONFIRMED",
+  "EXCLUDED",
+  "TRANSFER_CANDIDATE",
+  "TRANSFER_CONFIRMED",
+  "DUPLICATE_CANDIDATE",
+  "DUPLICATE_CONFIRMED",
+];
 
 function asRecord(ctx: Ctx, value: unknown, path: string): Record<string, unknown> | null {
   if (typeof value === "object" && value !== null && !Array.isArray(value)) {
@@ -352,6 +365,7 @@ const TRANSACTION_KEYS = [
   "isPending",
   "isRemoved",
   "categoryId",
+  "state",
 ] as const;
 
 function walkTransaction(ctx: Ctx, row: Record<string, unknown>, path: string): InteropTransactionDto {
@@ -374,6 +388,7 @@ function walkTransaction(ctx: Ctx, row: Record<string, unknown>, path: string): 
     isPending: requireBool(ctx, row.isPending, `${path}.isPending`),
     isRemoved: optionalBool(ctx, row.isRemoved, `${path}.isRemoved`),
     categoryId: optionalString(ctx, row.categoryId, `${path}.categoryId`),
+    state: oneOf(ctx, row.state, `${path}.state`, TRANSACTION_STATES),
   };
 }
 
@@ -595,6 +610,7 @@ export function serializeInteropBundle(bundle: InteropBundle): InteropSerializat
       isPending: t.isPending,
       isRemoved: t.isRemoved,
       categoryId: t.categoryId,
+      state: t.state,
     })),
     categories: bundle.categories.map((c) => ({
       id: c.id,

@@ -1,5 +1,5 @@
 {
-  "interopVersion": 3,
+  "interopVersion": 4,
   "provider": "MONEY_MANAGER",
   "householdId": "hh_rivera",
   "exportedAt": "2026-07-11T12:00:00.000Z",
@@ -92,7 +92,8 @@
       "merchantName": "Northwind Payroll",
       "description": "ACH CREDIT DIRECT DEPOSIT",
       "isPending": false,
-      "categoryId": "cat_rivera_income"
+      "categoryId": "cat_rivera_income",
+      "state": "POSTED"
     },
     {
       "providerTransactionId": "mock-txn-mtg-1",
@@ -104,7 +105,8 @@
       "merchantName": "Cascade Mortgage",
       "description": "WEB PMT CASCADE MORTGAGE",
       "isPending": false,
-      "categoryId": "cat_rivera_housing"
+      "categoryId": "cat_rivera_housing",
+      "state": "POSTED"
     },
     {
       "providerTransactionId": "mock-txn-dc-1",
@@ -115,7 +117,8 @@
       "currencyCode": "USD",
       "merchantName": "Little Sprouts Daycare",
       "isPending": false,
-      "categoryId": "cat_rivera_childcare"
+      "categoryId": "cat_rivera_childcare",
+      "state": "POSTED"
     },
     {
       "providerTransactionId": "mock-txn-util-1",
@@ -126,7 +129,8 @@
       "currencyCode": "USD",
       "merchantName": "City Utilities",
       "isPending": false,
-      "categoryId": "cat_rivera_utilities"
+      "categoryId": "cat_rivera_utilities",
+      "state": "POSTED"
     },
     {
       "providerTransactionId": "mock-txn-nflx-1",
@@ -137,7 +141,8 @@
       "currencyCode": "USD",
       "merchantName": "Netflix",
       "isPending": false,
-      "categoryId": "cat_rivera_subscriptions"
+      "categoryId": "cat_rivera_subscriptions",
+      "state": "AUTO_CLASSIFIED"
     },
     {
       "providerTransactionId": "mock-txn-costco-1",
@@ -148,7 +153,8 @@
       "currencyCode": "USD",
       "merchantName": "Costco",
       "isPending": false,
-      "categoryId": "cat_rivera_groceries"
+      "categoryId": "cat_rivera_groceries",
+      "state": "POSTED"
     },
     {
       "providerTransactionId": "mock-txn-apple-1",
@@ -159,7 +165,8 @@
       "currencyCode": "USD",
       "merchantName": "Apple",
       "isPending": false,
-      "categoryId": "cat_rivera_subscriptions"
+      "categoryId": "cat_rivera_subscriptions",
+      "state": "POSTED"
     },
     {
       "providerTransactionId": "mock-txn-cloudfit-1",
@@ -170,7 +177,8 @@
       "currencyCode": "USD",
       "merchantName": "CloudFit",
       "isPending": false,
-      "categoryId": "cat_rivera_subscriptions"
+      "categoryId": "cat_rivera_subscriptions",
+      "state": "AUTO_CLASSIFIED"
     },
     {
       "providerTransactionId": "mock-txn-dining-pending",
@@ -180,7 +188,8 @@
       "currencyCode": "USD",
       "merchantName": "Osteria Verde",
       "isPending": true,
-      "categoryId": "cat_rivera_dining"
+      "categoryId": "cat_rivera_dining",
+      "state": "PENDING"
     },
     {
       "providerTransactionId": "mock-txn-dining-posted",
@@ -192,7 +201,8 @@
       "currencyCode": "USD",
       "merchantName": "Osteria Verde",
       "isPending": false,
-      "categoryId": "cat_rivera_dining"
+      "categoryId": "cat_rivera_dining",
+      "state": "POSTED"
     }
   ],
   "categories": [
