@@ -29,5 +29,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: npm audit
+      # DELIBERATELY STRICTER than the app repos' gate (critical, production
+      # deps only — X3 flagged the platform inconsistency). This package has no
+      # production runtime of its own: everything here is build/test tooling,
+      # and its real "production" surface is source consumed via SHA-pinned git
+      # deps. `--omit=dev` would therefore audit almost nothing. High-on-all
+      # was green when this comment landed (nanoid bumped to 3.3.18 the same
+      # day); if it goes red, fix or explicitly accept the advisory with an
+      # expiry — never widen the threshold to keep it green.
+      - name: Gate — no high+ advisories
         run: npm audit --audit-level=high
+
+      # Always runs, including when the gate fails, so the log carries the
+      # whole picture rather than only the first thing that tripped.
+      - name: Full advisory report (informational)
+        if: always()
+        run: npm audit || true
