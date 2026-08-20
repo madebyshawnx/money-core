@@ -67,7 +67,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "verify": "npm run typecheck && npm run build && npm run test",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "test:coverage": "vitest run --coverage"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
@@ -89,9 +90,15 @@
     "react-dom": "^18.2.0 || ^19.0.0"
   },
   "peerDependenciesMeta": {
-    "lucide-react": { "optional": false },
-    "react": { "optional": false },
-    "react-dom": { "optional": false }
+    "lucide-react": {
+      "optional": false
+    },
+    "react": {
+      "optional": false
+    },
+    "react-dom": {
+      "optional": false
+    }
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",
@@ -101,6 +108,7 @@
     "@types/react": "^19.0.7",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^6.0.5",
+    "@vitest/coverage-v8": "^4.1.11",
     "jsdom": "^25.0.1",
     "lucide-react": "0.469.0",
     "react": "19.0.0",
