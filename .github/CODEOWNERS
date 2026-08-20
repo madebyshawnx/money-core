@@ -1,0 +1,14 @@
+# Everything in this package is shared money math consumed by Cadence,
+# Money Manager, and (planned) PennyBank via SHA-pinned git deps — all of
+# it is review-worthy, so the default owner covers the tree. Informational
+# today: with no branch-protection rule requiring code-owner review, GitHub
+# only uses this file to auto-request reviewers. Enabling "require review
+# from code owners" would also block the standing agent-merge workflow —
+# make that change deliberately, not as a side effect of editing this file.
+* @madebyshawnx
+
+# The two surfaces the sibling repos' human-review gates depend on,
+# called out explicitly in case the default line above is ever narrowed:
+# the AI policy validator, and the Cadence<->Money Manager interop contract.
+/src/lib/domain/policy/ @madebyshawnx
+/src/lib/interop/ @madebyshawnx
