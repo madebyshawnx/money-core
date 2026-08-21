@@ -1,12 +1,14 @@
 # @madebyshawnx/money-core
 
 Canonical financial engines **and the shared design-system kit** used by
-**Cadence** (read-only weekly briefing) and **Money Manager** (interactive
-budgeting). PennyBank (credit-card payoff) consumes neither yet — it has its own
-component kit and a float-dollars payoff engine.
+**Cadence** (read-only weekly briefing), **Money Manager** (interactive
+budgeting) and **PennyBank** (credit-card payoff). Cadence and Money Manager
+consume the engines; all three consume the UI primitives and the one
+design-token sheet. PennyBank keeps its own float-dollars payoff engine (see
+"Not yet included").
 
 ```
-ledger · recurring · forecast · rules · policy · types · money · seed · ui
+ledger · recurring · forecast · rules · policy · types · money · seed · ui · tokens.css
 ```
 
 ## Why this exists
@@ -91,10 +93,11 @@ StatusBadge/StatusCard) plus the `cn` class-merge helper, all from one subpath:
 import { Card, StatusBadge, Button, cn } from "@madebyshawnx/money-core/ui";
 ```
 
-**The design TOKENS stay in the app.** Each app's `app/globals.css` declares
-`--paper`, `--ink`, `--accent`, the status ramp and the elevation stack; the
-primitives only ever name the semantic utilities built on them (`bg-card`,
-`text-safe`, `border-ink-3`). That is what lets an app re-theme without forking
+**The design tokens ship here too, as one CSS sheet** — see
+[`./tokens.css`](#tokenscss--the-one-design-token-sheet) below. The primitives
+only ever name the semantic utilities built on those tokens (`bg-card`,
+`text-safe`, `border-ink-3`); the mapping from token to utility (`@theme
+inline`) stays in each app, which is what lets an app re-theme without forking
 a component. Two things a consumer must do:
 
 1. **Tell Tailwind to scan this package**, or none of the kit's class names are
@@ -102,7 +105,8 @@ a component. Two things a consumer must do:
    ```css
    @source "../node_modules/@madebyshawnx/money-core/dist";
    ```
-2. **Nothing.** `"use client"` is handled here — see below.
+2. **Import the token sheet** (next section). `"use client"` needs nothing from
+   the consumer — it is handled here, see below.
 
 ### Why the UI half is built unbundled
 
@@ -130,14 +134,65 @@ package.
 | `lucide-react` | **peer** | `LucideIcon` is in this package's PUBLIC types — `EmptyState`, `Callout` and `StatusBadge` take icons as props. Two copies means two nominally different `LucideIcon` types meeting at the boundary. |
 | `clsx`, `tailwind-merge` | **real** | Pure string functions, no shared state, absent from the public types. A duplicate would be harmless; making consumers install them to get a working `cn` would not. |
 
+## `./tokens.css` — the one design-token sheet
+
+`src/styles/tokens.css`, shipped verbatim as `dist/tokens.css` and exported at
+`@madebyshawnx/money-core/tokens.css`. One line at the top of the entry
+stylesheet, right after Tailwind itself:
+
+```css
+@import "tailwindcss";
+@import "@madebyshawnx/money-core/tokens.css";
+```
+
+Tailwind 4 inlines it at build time. Its resolver honours `exports` under the
+`style` condition, so the subpath stays a **plain string** target — a
+conditional object would have to name every resolver (Node, Tailwind, Vite).
+What the sheet carries:
+
+- the **semantic palette**, in `@layer base` — `--paper`, `--ink`, `--rule`,
+  `--accent`, the status ramp (`--safe` / `--watch` / `--action` / `--stale` /
+  `--danger`) and the elevation colours (`--lift-1..3`); light on `:root`, dark
+  re-stepped on `.dark`, `color-scheme` on both;
+- the **Monarch scales**, unlayered — `--gray-1..12`, `--accent-9..11`,
+  `--pos` / `--neg` / `--warn`, `--chart-1..8`, surfaces and spacing —
+  consumed as arbitrary values (`bg-[var(--gray-2)]`).
+
+What stays in the app: the `@theme inline` block mapping the palette onto
+Tailwind utilities (the semantic NAMES differ per app — PennyBank's are
+shadcn's), fonts, radii, and any app-local extension declared beside the import
+(PennyBank's non-semantic `--series-*` chart ramp). The sheet declares nothing
+in `--color-*`, `--font-*`, `--text-*` or `--radius-*`: an unlayered copy
+here would outrank the app's own `@theme` value regardless of position.
+
+Two tests, one on each side of the boundary. `tests/unit/tokens/tokens.test.ts`
+pins the sheet itself: it ships byte-identical at the exported subpath, it is
+tokens and nothing else, both themes are whole and dark is a re-step. Each
+consumer's `tests/integration/design-tokens.test.ts` compiles its stylesheet
+with the sheet inlined and asserts the result — slash-opacity survives as
+`color-mix`, the status ramp stays legible on its own tints, the anchors hold.
+
+Before R2-5 this was three byte-identical copies held in step by discipline
+alone — the arrangement the engines were rescued from. Values follow
+money-manager `docs/DESIGN_MONARCH_DIRECTION.md` §4 and §6; the dark scale is
+derived from Radix dark, not observed on Monarch dark screens (Phase 4
+validates it).
+
 ## Scripts
 
 ```bash
 npm run typecheck   # tsc --noEmit
 npm run build       # clean, then tsup -> dist/ (ESM + .d.ts, 10 entry points)
-npm test            # vitest (375 tests) — asserts against dist/, so build first
+npm test            # vitest (521 tests) — asserts against dist/, so build first
 npm run verify      # typecheck, build, test — in that order, deliberately
+
+node scripts/check-consumer-pins.mjs    # MC-3: the three apps pin ONE money-core SHA
+node scripts/check-consumer-tokens.mjs  # R2-5: the three apps import THIS token sheet, same installed copy
 ```
+
+The two `check-consumer-*` scripts are operator checks, not CI: they read the
+sibling working trees on the dev machine (the repos are private, so consumer
+CI cannot install the git dependency). Run both after any re-pin.
 
 `verify` builds **before** it tests: the `"use client"` assertions are about the
 files that ship, and a build assertion that runs against a stale `dist/` is
