@@ -242,6 +242,16 @@
  * every consumer's theme controller writes onto <html>. Aliases declared as
  * `var(--gray-N)` need no re-declaration here: var() resolves at the element
  * that uses it, against the re-stepped scale.
+ *
+ * KNOWN GAP, deliberately carried over, not fixed here. Only eight of the
+ * twelve neutral steps are re-stepped — the §4 derivation's set — so
+ * `--gray-5`, `--gray-7`, `--gray-8` and `--gray-10` keep their LIGHT values
+ * under `.dark`. Money Manager paints one of them (`--gray-7`, an indicator
+ * dot in the shell), so authoring dark values is a visible change and belongs
+ * to the Phase 4 dark-mode validation pass, which owns every dark value on
+ * this sheet. R2-5 moved the sheet byte-for-byte in values; it did not
+ * redesign it. The contract test pins EXACTLY this subset so the gap cannot
+ * widen silently — and must be updated, on purpose, when Phase 4 closes it.
  */
 .dark {
   --gray-1: #191817;
