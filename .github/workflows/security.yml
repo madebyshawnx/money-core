@@ -45,3 +45,27 @@ jobs:
       - name: Full advisory report (informational)
         if: always()
         run: npm audit || true
+
+  # `npm audit` only sees dependency advisories — it cannot catch a hardcoded
+  # key or token in our own code. money-core is the shared money-math package
+  # both apps pin by SHA, so anything in its history ships into both. Gitleaks
+  # scans the FULL git history (fetch-depth: 0): a secret committed and later
+  # deleted is still found — deleted-but-in-history is exactly how real leaks
+  # ship. The history is clean today (session 21 + 23 local sweeps), so there
+  # is no `.gitleaksignore`; add one with exact fingerprints, never a path
+  # allowlist, if a human-verified false positive ever appears. The action is
+  # free for personal accounts.
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
