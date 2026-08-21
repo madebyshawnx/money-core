@@ -143,12 +143,21 @@ describe("tokens.css — the shipped sheet", () => {
     const manifest = JSON.parse(readFileSync(resolve(ROOT, "package.json"), "utf8")) as {
       exports: Record<string, unknown>;
       files: string[];
+      sideEffects: boolean | string[];
     };
     // A plain string target matches every resolver condition — Node's
     // `require.resolve`, Tailwind's enhanced-resolve under `style`, Vite's —
     // where a conditional object would have to name each of them.
     expect(manifest.exports[SUBPATH]).toBe("./dist/tokens.css");
     expect(manifest.files).toContain("dist");
+    // The sheet is imported for its side effect alone — it declares custom
+    // properties and exports nothing. The consumers reach it through
+    // Tailwind's own `@import`, which inlines it before any bundler runs, but
+    // a bare `import "…/tokens.css"` from JS would be dropped by a webpack-
+    // compatible bundler under the package's `"sideEffects": false`, with no
+    // error and no palette. CSS must be named as side-effectful (Codex, R2-5
+    // round 2).
+    expect(Array.isArray(manifest.sideEffects) ? manifest.sideEffects : []).toContain("*.css");
   });
 
   it("ships dist/tokens.css byte-identical to the source", () => {
