@@ -1,7 +1,7 @@
 {
   "name": "@madebyshawnx/money-core",
-  "version": "0.5.0",
-  "description": "Canonical financial engines and design-system kit shared by Cadence and Money Manager: ledger, recurring, forecast, rules, the AI policy validator, and the Ledger Dispatch UI primitives.",
+  "version": "0.6.0",
+  "description": "Canonical financial engines and design-system kit shared by Cadence, Money Manager and PennyBank: ledger, recurring, forecast, rules, the AI policy validator, the UI primitives, and the one design-token sheet.",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -54,7 +54,8 @@
     "./ui": {
       "types": "./dist/components/ui/index.d.ts",
       "import": "./dist/components/ui/index.js"
-    }
+    },
+    "./tokens.css": "./dist/tokens.css"
   },
   "files": [
     "dist"

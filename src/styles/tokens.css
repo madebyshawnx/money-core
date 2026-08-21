@@ -1,0 +1,273 @@
+/* ==========================================================================
+ * @madebyshawnx/money-core — tokens.css
+ *
+ * THE design-token sheet for the family: Money Manager, Cadence and PennyBank
+ * each pull it in with one line at the top of their entry stylesheet —
+ *
+ *   @import "@madebyshawnx/money-core/tokens.css";
+ *
+ * — and keep only what is genuinely theirs beside it: the `@theme inline`
+ * block that maps these names onto Tailwind utilities (the semantic NAMES
+ * differ per app; PennyBank's are shadcn's), their fonts, their radii, and
+ * PennyBank's non-semantic `--series-*` chart ramp.
+ *
+ * Before R2-5 this sheet was three byte-identical copies kept in step by
+ * discipline alone — the same arrangement the financial engines were rescued
+ * from (see `src/index.ts`). Values are the Monarch direction
+ * (money-manager docs/DESIGN_MONARCH_DIRECTION.md §4, §6): Monarch's warm
+ * gray verbatim, the family's Radix-iris indigo accent — deliberately NOT
+ * Monarch's orange — and a dark scale DERIVED from Radix dark, not observed on
+ * real Monarch dark screens (Phase 4 validates it; until then every dark
+ * value here is a considered estimate, not a fact).
+ *
+ * Two rules govern the sheet, and `tests/unit/tokens/tokens.test.ts` enforces
+ * both at the source while each consumer's
+ * `tests/integration/design-tokens.test.ts` enforces them on the COMPILED CSS:
+ *
+ * 1. Tokens and nothing else. No `@theme` (it would add utilities to every
+ *    app at once), no `@import`, no fonts, no remote origin, and nothing in a
+ *    namespace the consumers' `@theme` blocks own (`--color-*`, `--font-*`,
+ *    `--text-*`, `--radius-*`) — an unlayered declaration outranks a layered
+ *    one regardless of position, so a stray `--font-sans` here would silently
+ *    win over the app's own.
+ * 2. Dark is a deliberate re-step against its own ground, NOT an inversion and
+ *    NOT an opacity trick. Every dark value is authored independently.
+ *
+ * Two blocks, deliberately different:
+ *   - the SEMANTIC PALETTE sits in `@layer base`, where the consumers had it,
+ *     so it composes with their preflight and `@theme inline` exactly as the
+ *     local copies did;
+ *   - the MONARCH SCALES are UNLAYERED: plain custom properties consumed via
+ *     arbitrary values like `bg-[var(--gray-2)]`, with no utility generated
+ *     from them and therefore nothing for a layer to order.
+ * ========================================================================== */
+
+@layer base {
+  /*
+   * Light is the default ground: Monarch's warm cream — gray-1 canvas behind
+   * white hairline-bordered cards, near-black WARM text. Never pure white
+   * canvas, never pure black text (DESIGN_MONARCH_DIRECTION.md §2).
+   * `:root` and `.dark` have equal specificity, so `.dark` MUST stay below.
+   *
+   * These are literal hexes rather than `var(--gray-N)` references on purpose:
+   * the token-contract tests compare the light and dark DECLARED values as
+   * strings, and an identical `var()` reference in both themes would read as
+   * "not re-stepped" even though it resolves differently.
+   */
+  :root {
+    color-scheme: light;
+
+    --paper: #fbfaf8; /* gray-1  — the warm cream canvas */
+    --paper-2: #ffffff; /* cards are the one true white */
+    --paper-3: #f6f5f3; /* gray-2  — muted fills, hover ground */
+    --ink: #22201d; /* gray-12 — warm near-black */
+    --ink-2: #777573; /* gray-11 — muted text */
+    --ink-3: #8f8c8a; /* gray-9  — the "border that must be seen" step */
+    --rule: #ebe8e5; /* gray-4  — hairline card borders (= --border-card) */
+    --rule-2: #d1cecb; /* gray-7  — stronger divider */
+    /*
+     * The family accent: Radix iris indigo (§6.2), deliberately NOT Monarch's
+     * orange — copying that hue is the one move that would read as a clone.
+     * Reserved for primary controls, active states and focus rings; never on
+     * charts, never carrying money semantics.
+     */
+    --accent: #5b5bd6; /* iris-9 */
+    --accent-2: #5151cd; /* iris-10 — hover step and focus ring */
+    --accent-wash: #edf2fe; /* iris-3 tint (= --accent-tint-3 below) */
+    /* Text that sits ON --accent. Not a plan token; required by primary-foreground. */
+    --accent-ink: #ffffff;
+
+    /*
+     * Status ramp, unchanged from the audited pass: these five already clear
+     * 4.5:1 on tints of themselves over a #ffffff card (the contrast contract
+     * in every consumer's tests/integration/design-tokens.test.ts), and the
+     * deep green/amber/indigo/red hues sit comfortably on the warm ground.
+     * The SeverityBadge ramp the kit paints from these is load-bearing product
+     * semantics and keeps its meaning exactly.
+     */
+    --safe: #266b4f;
+    --watch: #8a5a12;
+    --action: #2b57a8;
+    /*
+     * Kept darker than the once-specified #6B7484: that value measured under
+     * AA on any tint of itself (4.17:1 in the StatusBadge pill as shipped).
+     * DATA_STALE is a status; it has to be readable.
+     */
+    --stale: #5f6877;
+    --danger: #a3232b;
+    --danger-ink: #ffffff;
+
+    /*
+     * Shadow colours, not shadows: the consumers' three `--shadow-lift-*`
+     * stacks compose them. Near-flat and cast in the warm ink hue — Monarch
+     * cards are separated by hairline borders, and the shadow only whispers.
+     */
+    --lift-1: rgb(34 32 29 / 0.04);
+    --lift-2: rgb(34 32 29 / 0.06);
+    --lift-3: rgb(34 32 29 / 0.1);
+  }
+
+  /*
+   * Dark ground, re-stepped independently against the derived warm-gray dark
+   * scale (§4). The accent flips from the solid iris fill to a light iris
+   * because #5b5bd6 text on #191817 is unreadable — which is exactly why
+   * `--accent-ink` / `--danger-ink` flip to near-black here rather than
+   * staying white.
+   */
+  .dark {
+    color-scheme: dark;
+
+    --paper: #191817; /* derived warm-gray dark scale (§4) — not yet */
+    --paper-2: #1f1e1c; /* validated against real Monarch dark screens; */
+    --paper-3: #282623; /* Phase 4 owns that review. */
+    --ink: #f1efed;
+    --ink-2: #b3b0ac;
+    --ink-3: #716e6a; /* 3.3:1 on the dark card — still a visible boundary */
+    --rule: #2e2c29;
+    --rule-2: #3d3a36;
+    --accent: #b1a9ff; /* iris dark-11: readable as link text AND as a fill */
+    --accent-2: #cfcaff;
+    --accent-wash: #232150;
+    --accent-ink: #191817;
+
+    --safe: #5fc79a;
+    --watch: #e0a94a;
+    --action: #7fa5e8;
+    /*
+     * Lightened from #8a93a3: the warm dark card (#1f1e1c) sits a step
+     * lighter than the old navy ground, and the old value fell to ~4.5:1 on
+     * a 12% tint of itself — no headroom. This clears it comfortably.
+     */
+    --stale: #99a2b2;
+    --danger: #f0868d;
+    --danger-ink: #191817;
+
+    /*
+     * True black and far heavier. A 4.5%-ink shadow that reads as elevation on
+     * #fbfaf8 is literally invisible on #191817; dark needs its own strengths
+     * or it has no depth at all. This is the same re-step-not-invert rule the
+     * colour tokens follow.
+     */
+    --lift-1: rgb(0 0 0 / 0.3);
+    --lift-2: rgb(0 0 0 / 0.34);
+    --lift-3: rgb(0 0 0 / 0.42);
+  }
+}
+
+/* ==========================================================================
+ * Monarch shared scales — DESIGN_MONARCH_DIRECTION.md §4, verbatim where
+ * non-colliding. UNLAYERED on purpose: these are plain custom properties (no
+ * utilities are generated from them), consumed via arbitrary values like
+ * `bg-[var(--gray-2)]`.
+ *
+ * Deliberate omissions, all name collisions with the consumers' live @theme
+ * namespaces:
+ *   --font-sans/--font-display  live in each app's @theme (next/font or
+ *                               @fontsource wiring);
+ *   --radius-*                  live in each app's @theme (utility namespace);
+ *   --text-*                    would silently re-size every `text-*` utility;
+ *   --accent-2/--accent-3 tints — the kit already uses `--accent-2` as the
+ *   accent HOVER step, so the §6 tints are exposed as --accent-tint-2/-3
+ *   (--accent-wash in the palette above equals --accent-tint-3).
+ *
+ * `--chart-*` is the family chart palette and is DEFINED for every consumer;
+ * whether an app DRAWS with it is that app's policy. PennyBank does not: its
+ * charts compare payoff strategies, and this set includes the money green and
+ * red, so it draws from its own non-semantic `--series-*` ramp instead.
+ * ========================================================================== */
+:root {
+  /* Neutrals — Monarch's warm gray, verbatim (§4). */
+  --gray-1: #fbfaf8;
+  --gray-2: #f6f5f3;
+  --gray-3: #efecea;
+  --gray-4: #ebe8e5;
+  --gray-5: #e4e1de;
+  --gray-6: #dcd9d6;
+  --gray-7: #d1cecb;
+  --gray-8: #bebbb8;
+  --gray-9: #8f8c8a;
+  --gray-10: #84827f;
+  --gray-11: #777573;
+  --gray-12: #22201d;
+
+  /* Accent — Radix iris indigo, the §6.2 decision (NOT Monarch's orange). */
+  --accent-9: #5b5bd6;
+  --accent-10: #5151cd;
+  --accent-11: #5753c6;
+  --accent-tint-2: #f7f9ff;
+  --accent-tint-3: #edf2fe;
+
+  /* Semantic money states (Radix green/red/yellow). Green = positive, red =
+   * negative, always — the accent never carries money meaning. */
+  --pos-3: #e6f6eb;
+  --pos-9: #30a46c;
+  --pos-11: #218358;
+  --neg-3: #feebec;
+  --neg-9: #e5484d;
+  --neg-11: #ce2c31;
+  --warn-3: #fff7c2;
+  --warn-9: #ffc53d;
+  --warn-11: #ab6400;
+
+  /* Chart palette (order matters; teal is the default series). */
+  --chart-1: #00a2c7;
+  --chart-2: #30a46c;
+  --chart-3: #8e4ec6;
+  --chart-4: #d6409f;
+  --chart-5: #3e63dd;
+  --chart-6: #ffc53d;
+  --chart-7: #ff692d;
+  --chart-8: #e5484d;
+
+  /* Surfaces */
+  --bg-canvas: var(--gray-1);
+  --bg-card: #ffffff;
+  --border-card: var(--gray-4);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --shadow-card: 0 1px 2px rgb(34 32 29 / 0.04); /* near-flat; borders do the work */
+  --shadow-pop: 0 8px 24px rgb(34 32 29 / 0.12); /* modals/popovers */
+
+  /* Money columns read tabular by default (§4). */
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Dark — derived from Radix dark scales, NOT observed on real Monarch dark
+ * screens (§4 flags this; Phase 4 validates). Wired to `.dark`, the class
+ * every consumer's theme controller writes onto <html>. Aliases declared as
+ * `var(--gray-N)` need no re-declaration here: var() resolves at the element
+ * that uses it, against the re-stepped scale.
+ */
+.dark {
+  --gray-1: #191817;
+  --gray-2: #1f1e1c;
+  --gray-3: #282623;
+  --gray-4: #2e2c29;
+  --gray-6: #3d3a36;
+  --gray-9: #716e6a;
+  --gray-11: #b3b0ac;
+  --gray-12: #f1efed;
+
+  --accent-tint-2: #232150;
+  --accent-tint-3: #2b2960;
+
+  --pos-3: #142e21;
+  --pos-9: #33b074;
+  --pos-11: #3dd68c;
+  --neg-3: #3b1219;
+  --neg-9: #eb5d61;
+  --neg-11: #ff9592;
+  --warn-3: #302008;
+  --warn-9: #ffc53d;
+  --warn-11: #f5b944;
+
+  --chart-1: #23afd0;
+
+  --bg-card: var(--gray-2);
+  --shadow-card: none;
+}

@@ -63,5 +63,14 @@ export default defineConfig([
     clean: false,
     sourcemap: true,
     external: UI_EXTERNAL,
+    /*
+     * The token sheet (R2-5) is not a module -- esbuild never sees it. It is
+     * copied verbatim to `dist/tokens.css`, which `exports["./tokens.css"]`
+     * points at; `tests/unit/tokens/tokens.test.ts` reads the copy back and
+     * asserts it is byte-identical to the source. Attached to the UI build
+     * rather than the engines build for the reason the UI is here at all: the
+     * sheet belongs to the design-system half of the package.
+     */
+    publicDir: "src/styles",
   },
 ]);
