@@ -34,6 +34,13 @@
 
 export { cn } from "../../lib/utils/cn.js";
 
+export {
+  AppSwitcher,
+  type AppAvailability,
+  type AppDestination,
+  type AppId,
+  type AppSwitcherProps,
+} from "./AppSwitcher.js";
 export { Badge, type BadgeProps, type BadgeVariant } from "./Badge.js";
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from "./Button.js";
 export { Callout, type CalloutProps, type CalloutVariant } from "./Callout.js";

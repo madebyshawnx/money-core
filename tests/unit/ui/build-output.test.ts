@@ -48,10 +48,11 @@ beforeAll(() => {
 
 describe("built UI output", () => {
   it("emits one module per primitive rather than one bundle", () => {
-    // 13 primitives + the focus-trap hook + the barrel. A bundled build would
+    // 14 primitives + the focus-trap hook + the barrel. A bundled build would
     // collapse these.
     expect(built.map((b) => b.file).sort()).toEqual(
       [
+        "AppSwitcher.js",
         "Badge.js",
         "Button.js",
         "Callout.js",
