@@ -31,7 +31,7 @@ const UI_DIST = resolve(__dirname, "../../../dist/components/ui");
 const DIRECTIVE = '"use client"';
 
 /** The modules that touch React state or the DOM and therefore must be client. */
-const CLIENT_MODULES = ["Sheet.js", "EvidenceDrawer.js", "useFocusTrap.js"];
+const CLIENT_MODULES = ["Sheet.js", "EvidenceDrawer.js", "useFocusTrap.js", "AppSwitcher.js"];
 
 let built: { file: string; text: string }[] = [];
 

@@ -1,4 +1,6 @@
-import { useId, type ReactNode } from "react";
+"use client";
+
+import { useId, type MouseEvent, type ReactNode } from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { ChevronDown, Loader2 } from "lucide-react";
 import { cn } from "../../lib/utils/cn.js";
@@ -100,11 +102,15 @@ export interface AppSwitcherProps {
   /** Every OTHER app in the family, reachable or not. */
   destinations: AppDestination[];
   /**
-   * Called when a destination is activated. An app that needs to start a
-   * handoff before navigating uses this and flips that row to `in-flight`;
-   * an app that just wants a link can omit it and let the anchor do its job.
+   * Called when a destination is activated, with the click event.
+   *
+   * An app that just wants a link omits this and lets the anchor do its job.
+   * An app that must perform a handoff FIRST calls `event.preventDefault()` and
+   * then flips that row to `in-flight` — without that, the browser follows the
+   * href immediately and the handoff never gets to finish, which would make the
+   * `in-flight` state unreachable in practice.
    */
-  onSelect?: (id: AppId) => void;
+  onSelect?: (id: AppId, event: MouseEvent<HTMLAnchorElement>) => void;
 }
 
 /** Shared geometry for both kinds of row, so "Here" and a destination align. */
@@ -242,9 +248,10 @@ export function AppSwitcher({ currentApp, current, destinations, onSelect }: App
 
               {group.rows.map((destination) =>
                 isAvailable(destination) ? (
-                  <DropdownMenu.Item key={destination.id} asChild onSelect={() => onSelect?.(destination.id)}>
+                  <DropdownMenu.Item key={destination.id} asChild>
                     <a
                       href={destination.availability.href}
+                      onClick={(event) => onSelect?.(destination.id, event)}
                       aria-label={`Switch to ${destination.name} — ${destination.description}`}
                       className={cn(ROW, "data-[highlighted]:bg-muted")}
                     >

@@ -18,7 +18,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { AppSwitcher, type AppDestination } from "@/components/ui/AppSwitcher";
+import { AppSwitcher, type AppDestination, type AppSwitcherProps } from "@/components/ui/AppSwitcher";
 
 const current = { name: "Cadence", description: "Read what changed this week", glyph: "C" };
 
@@ -63,6 +63,50 @@ describe("AppSwitcher — reachable destinations", () => {
     // Passing the current app in the destinations array is a caller mistake that
     // should be absorbed, not rendered as "switch to the app you are in".
     expect(screen.queryByRole("menuitem", { name: /Switch to Cadence/i })).not.toBeInTheDocument();
+  });
+
+  it("hands the click event to onSelect, so a handoff can stop the navigation", async () => {
+    // A caller that must hand off BEFORE navigating does exactly this: take the
+    // event, stop the browser, then start its own async work.
+    const onSelect = vi.fn<NonNullable<AppSwitcherProps["onSelect"]>>((_id, event) => event.preventDefault());
+    const user = await open(
+      <AppSwitcher
+        currentApp="cadence"
+        current={current}
+        destinations={[destination()]}
+        onSelect={onSelect}
+      />,
+    );
+
+    await user.click(await screen.findByRole("menuitem", { name: /Switch to Money Manager/i }));
+
+    // Without the event, the browser follows the href immediately and an async
+    // handoff never gets to finish — which would make `in-flight` a state the
+    // component advertises but nothing can ever reach.
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect.mock.calls[0]?.[0]).toBe("manager");
+    expect(onSelect.mock.calls[0]?.[1]?.defaultPrevented).toBe(true);
+  });
+
+  it("leaves the menu open when the caller prevents default, so in-flight can be seen", async () => {
+    const onSelect = vi.fn<NonNullable<AppSwitcherProps["onSelect"]>>((_id, event) => event.preventDefault());
+    const user = await open(
+      <AppSwitcher
+        currentApp="cadence"
+        current={current}
+        destinations={[destination()]}
+        onSelect={onSelect}
+      />,
+    );
+
+    await user.click(await screen.findByRole("menuitem", { name: /Switch to Money Manager/i }));
+
+    // Radix composes the child onClick BEFORE its own select handler and skips
+    // that handler once the event is defaultPrevented (@radix-ui/primitive), so
+    // preventing default keeps the menu mounted. That is not incidental: the
+    // spinner this component advertises renders INSIDE the menu, so if the menu
+    // closed on click there would be no surface left to show it on.
+    expect(screen.getByRole("menuitem", { name: /Switch to Money Manager/i })).toBeInTheDocument();
   });
 });
 
