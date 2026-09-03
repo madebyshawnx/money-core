@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { AppSwitcher, type AppDestination, type AppSwitcherProps } from "@/components/ui/AppSwitcher";
@@ -48,6 +48,28 @@ describe("AppSwitcher — reachable destinations", () => {
     // A real href is the whole point: these are separate origins, and anything
     // that routes client-side would 404 inside the app it is leaving.
     expect(link).toHaveAttribute("href", "https://manager.example/dashboard");
+  });
+
+  it("is an <a> carrying the resolved URL verbatim — never rewritten, relativised, or routed", async () => {
+    const href = "https://manager.example/dashboard?from=cadence#inbox";
+    await open(
+      <AppSwitcher
+        currentApp="cadence"
+        current={current}
+        destinations={[destination({ availability: { status: "available", href } })]}
+      />,
+    );
+
+    const link = await screen.findByRole("menuitem", { name: /Switch to Money Manager/i });
+    // Ported from PennyBank's local suite when the app copies were deleted:
+    // that app is a react-router SPA, where anything short of a real absolute
+    // anchor — a NavLink, a routed onClick — 404s inside the app it is trying
+    // to leave. The app resolved this URL; the component's only job is to not
+    // touch it. `getAttribute` rather than the `href` property, because the
+    // property comes back resolved against the test origin and would hide
+    // exactly the rewriting this test exists to catch.
+    expect(link.tagName).toBe("A");
+    expect(link.getAttribute("href")).toBe(href);
   });
 
   it("marks the current app as here, and does not offer it as a destination", async () => {
@@ -252,5 +274,30 @@ describe("AppSwitcher — grouping", () => {
 
     expect(await screen.findByText("Platform")).toBeInTheDocument();
     expect(screen.getByText("Separate sign-in")).toBeInTheDocument();
+  });
+});
+
+describe("AppSwitcher — dismissal", () => {
+  it("closes on Escape and returns focus to the trigger", async () => {
+    const user = userEvent.setup();
+    render(<AppSwitcher currentApp="cadence" current={current} destinations={[destination()]} />);
+
+    // Capture the trigger BEFORE opening, not after: Radix's modal menu puts
+    // aria-hidden on everything outside itself while it is open, so a role
+    // query for the trigger at that point finds nothing. The app-local test
+    // this was ported from did the same, and for the same reason.
+    const trigger = screen.getByRole("button", { name: /switch app/i });
+    await user.click(trigger);
+    await screen.findByRole("menu");
+
+    await user.keyboard("{Escape}");
+
+    // Radix owns this behaviour — which is exactly why it is pinned HERE. Each
+    // app used to pin it in its local suite, and those tests died with the
+    // local copies; without an upstream copy, a future Radix major or a stray
+    // `onEscapeKeyDown` on the Content would ship a keyboard trap to all three
+    // apps at once with zero red tests.
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    expect(trigger).toHaveFocus();
   });
 });

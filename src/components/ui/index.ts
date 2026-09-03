@@ -28,8 +28,14 @@
  *      this package is emitted unbundled. Everything else here stays a server
  *      component, so importing a `Card` into a server page costs no client JS.
  *
- * App-shell files (AppShell, AppSwitcher, ThemeToggle) are deliberately NOT
- * here: they differ per app by design.
+ * App-shell files (AppShell, ThemeToggle) are deliberately NOT here: layout
+ * and theme wiring genuinely differ per app. AppSwitcher used to be on that
+ * list and moved in (XA-1) for the reason it was the wrong member: its
+ * footnote is a claim about security properties, and a claim maintained in
+ * three copies goes stale in the copy nobody is looking at. Only URL
+ * resolution stays with the apps — Next.js and Vite each inline their env
+ * reads at build time by textual substitution, so each app resolves its own
+ * origins and passes finished `destinations` in.
  */
 
 export { cn } from "../../lib/utils/cn.js";
