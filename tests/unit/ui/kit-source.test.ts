@@ -63,12 +63,12 @@ describe("kit source — token discipline", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("declares `use client` on exactly the client modules: two stateful primitives and the focus-trap hook", () => {
+  it("declares `use client` on exactly the client modules: three stateful primitives and the focus-trap hook", () => {
     const client = uiSources()
       .filter(({ text }) => /^\s*["']use client["']/.test(text))
       .map(({ file }) => file)
       .sort();
 
-    expect(client).toEqual(["EvidenceDrawer.tsx", "Sheet.tsx", "useFocusTrap.ts"]);
+    expect(client).toEqual(["AppSwitcher.tsx", "EvidenceDrawer.tsx", "Sheet.tsx", "useFocusTrap.ts"]);
   });
 });

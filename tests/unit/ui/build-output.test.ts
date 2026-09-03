@@ -31,7 +31,7 @@ const UI_DIST = resolve(__dirname, "../../../dist/components/ui");
 const DIRECTIVE = '"use client"';
 
 /** The modules that touch React state or the DOM and therefore must be client. */
-const CLIENT_MODULES = ["Sheet.js", "EvidenceDrawer.js", "useFocusTrap.js"];
+const CLIENT_MODULES = ["Sheet.js", "EvidenceDrawer.js", "useFocusTrap.js", "AppSwitcher.js"];
 
 let built: { file: string; text: string }[] = [];
 
@@ -48,10 +48,11 @@ beforeAll(() => {
 
 describe("built UI output", () => {
   it("emits one module per primitive rather than one bundle", () => {
-    // 13 primitives + the focus-trap hook + the barrel. A bundled build would
+    // 14 primitives + the focus-trap hook + the barrel. A bundled build would
     // collapse these.
     expect(built.map((b) => b.file).sort()).toEqual(
       [
+        "AppSwitcher.js",
         "Badge.js",
         "Button.js",
         "Callout.js",
