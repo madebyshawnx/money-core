@@ -15,7 +15,7 @@
  */
 
 import type { RecurringFrequency, RecurringObligation, RecurringType, Transaction } from "@/lib/domain/types";
-import { projectNextExpected } from "./schedule";
+import { occurrencesBetween, projectNextExpected } from "./schedule";
 
 /** Minimum matching transactions before a merchant is treated as recurring. */
 export const MIN_OCCURRENCES_FOR_RECURRING = 2;
@@ -27,6 +27,15 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MIN_OCCURRENCES_FOR_SEMI_MONTHLY = 3;
 /** Spacing of exactly this many days throughout is BIWEEKLY, even where it also fits two days of the month. */
 const BIWEEKLY_GAP_DAYS = 14;
+/** The highest day a SEMI_MONTHLY pair can name; the schedule lands 31 on every month's last day. */
+const MAX_DAY_OF_MONTH = 31;
+/** Semi-monthly splits the month roughly in half: its two days sit 15 ± 2 days apart. */
+const SEMI_MONTHLY_SPACING_DAYS = 15;
+const SEMI_MONTHLY_SPACING_TOLERANCE_DAYS = 2;
+/** A weekend payday moves at most two days (Sunday → Friday, Saturday → Monday). */
+const MAX_WEEKEND_MOVE_DAYS = 2;
+const SUNDAY = 0;
+const SATURDAY = 6;
 
 /** States that represent real, countable activity for detection. */
 const DETECTABLE_STATES: ReadonlySet<Transaction["state"]> = new Set([
@@ -129,32 +138,67 @@ function inferFrequency(gaps: number[]): RecurringFrequency {
  * 14/16/17-day gaps sit inside BIWEEKLY's 14±3 band. The calendar can — a
  * biweekly series drifts 2–3 days of the month every month; a semi-monthly one
  * does not. So a series the gaps call BIWEEKLY is SEMI_MONTHLY only when:
- *   - every date lands EXACTLY on one of two days of the month, where a date on
- *     its month's last day stands for any day at or past it (the 31st lands on
- *     Feb 28, as in the schedule);
- *   - a day repeats — any two dates fit two days and prove nothing;
- *   - not every gap is exactly 14 days. Constant 14-day spacing stays BIWEEKLY
+ *   - a pair of days explains EVERY date: each lands on its day exactly where
+ *     the schedule puts it (a day past a month's end on the last day) or, when
+ *     that day is a Saturday or Sunday, on the Friday before or the Monday
+ *     after — the usual payroll rule;
+ *   - the BEST such pair — fewest weekend moves, then the later days — splits
+ *     the month roughly in half (15 ± 2 days apart), which is what semi-monthly
+ *     means. "Later days first" makes a month's last day read as 31 (the last
+ *     day) unless another date pins a literal 28th–30th, so a Feb 28 payday
+ *     projects Mar 31, not Mar 28. A worse-fitting balanced pair is never
+ *     substituted: a biweekly series posted a day late on Feb 28 (Feb 13,
+ *     Feb 28, Mar 13) reads best as "13th and last day", 18 apart, and stays
+ *     BIWEEKLY;
+ *   - a day repeats (≥ 3 dates) — any two dates fit two days and prove nothing;
+ *   - not every gap is exactly 14 days: constant 14-day spacing stays BIWEEKLY
  *     even where a short February lets it fit two days (Feb 1, Feb 15, Mar 1).
- * Exact days only: a pay date moved for a weekend or holiday breaks the pin and
- * the series keeps its gap-based cadence. Conservative by design — only a series
- * that sits exactly on two days of the month ever leaves BIWEEKLY.
+ * DEFERRED, deliberately: holidays. A payday moved for a public holiday breaks
+ * the pin and the series keeps its gap-based cadence; only weekend moves are
+ * recognised.
  */
 function pinnedDaysOfMonth(sorted: readonly Transaction[], gaps: readonly number[]): number[] | undefined {
   if (sorted.length < MIN_OCCURRENCES_FOR_SEMI_MONTHLY) return undefined;
   if (gaps.every((gap) => Math.round(gap) === BIWEEKLY_GAP_DAYS)) return undefined;
-  const dates = sorted.map((t) => t.transactionDate);
-  const days = new Set(dates.filter((date) => !isLastDayOfMonth(date)).map((date) => date.getUTCDate()));
-  const unplacedMonthEnds = dates
-    .filter((date) => isLastDayOfMonth(date))
-    .map((date) => date.getUTCDate())
-    .filter((day) => ![...days].some((listed) => listed >= day));
-  if (unplacedMonthEnds.length > 0) days.add(Math.max(...unplacedMonthEnds));
-  return days.size === 2 ? [...days].sort((a, b) => a - b) : undefined;
+  const observedDays = sorted.map((t) => Math.floor(t.transactionDate.getTime() / MS_PER_DAY));
+  const windowStart = new Date((observedDays[0]! - MAX_WEEKEND_MOVE_DAYS) * MS_PER_DAY);
+  const windowEnd = new Date((observedDays[observedDays.length - 1]! + MAX_WEEKEND_MOVE_DAYS) * MS_PER_DAY);
+  let best: { first: number; second: number; weekendMoves: number } | undefined;
+  for (let second = MAX_DAY_OF_MONTH; second > 1; second -= 1) {
+    for (let first = second - 1; first >= 1; first -= 1) {
+      const scheduled = occurrencesBetween(undefined, "SEMI_MONTHLY", windowStart, windowEnd, [first, second]);
+      const weekendMoves = weekendMovesToFit(observedDays, scheduled);
+      if (weekendMoves !== undefined && (best === undefined || weekendMoves < best.weekendMoves)) {
+        best = { first, second, weekendMoves };
+      }
+    }
+  }
+  if (best === undefined) return undefined;
+  const isBalanced = near(best.second - best.first, SEMI_MONTHLY_SPACING_DAYS, SEMI_MONTHLY_SPACING_TOLERANCE_DAYS);
+  return isBalanced ? [best.first, best.second] : undefined;
 }
 
-/** True when `date` is the last day of its UTC month. */
-function isLastDayOfMonth(date: Date): boolean {
-  return new Date(date.getTime() + MS_PER_DAY).getUTCMonth() !== date.getUTCMonth();
+/**
+ * How many observed days needed a weekend move to land on a scheduled date — a
+ * payday on a Saturday or Sunday is paid the Friday before or the Monday after
+ * — or undefined when some observed day fits no scheduled date at all.
+ */
+function weekendMovesToFit(observedDays: readonly number[], scheduled: readonly Date[]): number | undefined {
+  const onTheDay = new Set<number>();
+  const movedForWeekend = new Set<number>();
+  for (const date of scheduled) {
+    const day = Math.floor(date.getTime() / MS_PER_DAY);
+    onTheDay.add(day);
+    if (date.getUTCDay() === SATURDAY) movedForWeekend.add(day - 1).add(day + 2);
+    if (date.getUTCDay() === SUNDAY) movedForWeekend.add(day - 2).add(day + 1);
+  }
+  let moves = 0;
+  for (const day of observedDays) {
+    if (onTheDay.has(day)) continue;
+    if (!movedForWeekend.has(day)) return undefined;
+    moves += 1;
+  }
+  return moves;
 }
 
 function inferType(amountCents: number, frequency: RecurringFrequency): RecurringType {

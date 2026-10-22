@@ -27,7 +27,7 @@
  *     corruption for the consumer to degrade.
  */
 
-import type { AccountType, RecurringFrequency, RecurringType, TransactionState } from "@/lib/domain/types";
+import type { AccountType, RecurringType, TransactionState } from "@/lib/domain/types";
 import {
   INTEROP_VERSION,
   type InteropAccountDto,
@@ -248,7 +248,7 @@ const ACCOUNT_STATUSES: readonly InteropAccountStatus[] = [
   "DISCONNECTED",
   "ERROR",
 ];
-const FREQUENCIES: readonly RecurringFrequency[] = [
+const FREQUENCIES: readonly InteropRecurringObligationDto["frequency"][] = [
   "WEEKLY",
   "BIWEEKLY",
   "MONTHLY",

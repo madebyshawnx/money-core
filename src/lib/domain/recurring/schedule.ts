@@ -29,6 +29,8 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MAX_OCCURRENCES = 1000;
 /** The longest month's last day — the highest SEMI_MONTHLY day that means anything. */
 const MAX_DAY_OF_MONTH = 31;
+/** SEMI_MONTHLY falls on exactly this many days of every month. */
+const SEMI_MONTHLY_DAY_COUNT = 2;
 
 const MONTHS_PER_STEP: Partial<Record<RecurringFrequency, number>> = {
   MONTHLY: 1,
@@ -41,58 +43,66 @@ const DAYS_PER_STEP: Partial<Record<RecurringFrequency, number>> = {
   BIWEEKLY: 14,
 };
 
+/**
+ * Days in a UTC month (`month` may run past 11 into later years). The ONE
+ * month-length rule in the recurring engine: month-end clamping for every
+ * cadence comes through here, and detection reads it via `occurrencesBetween`.
+ */
+function daysInUtcMonth(year: number, month: number): number {
+  return new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+}
+
 /** Add whole calendar months in UTC from an anchor day, clamping only in the target month. */
 function addMonthsFromAnchor(date: Date, months: number, anchorDay: number): Date {
   const base = new Date(date.getTime());
   base.setUTCDate(1);
   base.setUTCMonth(base.getUTCMonth() + months);
-  const daysInTargetMonth = new Date(
-    Date.UTC(base.getUTCFullYear(), base.getUTCMonth() + 1, 0),
-  ).getUTCDate();
-  base.setUTCDate(Math.min(anchorDay, daysInTargetMonth));
+  base.setUTCDate(Math.min(anchorDay, daysInUtcMonth(base.getUTCFullYear(), base.getUTCMonth())));
   return base;
 }
 
-/** Milliseconds past UTC midnight — the time of day an anchored SEMI_MONTHLY date carries. */
-function utcTimeOfDayMs(date: Date): number {
-  return date.getTime() - Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
-}
-
 /**
- * SEMI_MONTHLY days in ascending order, or undefined when there are none or any
- * is not a whole day 1–31. A corrupt list is refused, never partly used: a
- * projection from the surviving days would look valid and be wrong.
+ * SEMI_MONTHLY's two days in ascending order, or undefined unless there are
+ * exactly two different whole days 1–31. Anything else is refused whole, never
+ * partly used: the cadence is twice a month (24 a year) by definition, and a
+ * projection from a corrupted list would look valid and be wrong.
  */
 function validDaysOfMonth(daysOfMonth: readonly number[] | undefined): number[] | undefined {
-  if (daysOfMonth === undefined || daysOfMonth.length === 0) return undefined;
-  const isValid = daysOfMonth.every((day) => Number.isInteger(day) && day >= 1 && day <= MAX_DAY_OF_MONTH);
-  return isValid ? [...daysOfMonth].sort((a, b) => a - b) : undefined;
+  if (daysOfMonth === undefined) return undefined;
+  const days = [...daysOfMonth].sort((a, b) => a - b);
+  const isWholeDay = (day: number) => Number.isInteger(day) && day >= 1 && day <= MAX_DAY_OF_MONTH;
+  const isValid = days.length === SEMI_MONTHLY_DAY_COUNT && days[0] !== days[1] && days.every(isWholeDay);
+  return isValid ? days : undefined;
 }
 
 /**
  * SEMI_MONTHLY dates at or after `from` (and at or before `to`, when given), in
- * order, at most `limit` of them — walking month by month from the month of
- * `from`. Days that land on the same date in a short month (30 and 31 in
- * February) count once, so the output strictly increases.
+ * order, at most `limit` of them, walking month by month from the month of
+ * `from`. Each day lands on that day of the month, or on the month's last day
+ * when the month is shorter; two days that land on the same date count once.
+ * Dates carry the anchor's UTC time of day (midnight without one), so an
+ * anchored schedule compares like the other cadences.
  */
 function semiMonthlyDates(
   days: readonly number[],
-  timeOfDayMs: number,
+  anchor: Date | undefined,
   from: Date,
   to: Date | undefined,
   limit: number,
 ): Date[] {
+  const timeOfDayMs =
+    anchor === undefined ? 0 : anchor.getTime() - Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth(), anchor.getUTCDate());
   const out: Date[] = [];
   const year = from.getUTCFullYear();
   const month = from.getUTCMonth();
-  for (let offset = 0; offset < MAX_OCCURRENCES; offset += 1) {
-    const lastDay = new Date(Date.UTC(year, month + offset + 1, 0)).getUTCDate();
+  for (let offset = 0; offset < MAX_OCCURRENCES && out.length < limit; offset += 1) {
+    if (to !== undefined && Date.UTC(year, month + offset, 1) > to.getTime()) break;
+    const lastDay = daysInUtcMonth(year, month + offset);
     for (const day of days) {
       const time = Date.UTC(year, month + offset, Math.min(day, lastDay)) + timeOfDayMs;
-      if (time < from.getTime() || time === out.at(-1)?.getTime()) continue;
-      const isWithinWindow = to === undefined || time <= to.getTime();
-      if (!isWithinWindow || out.length >= limit) return out;
-      out.push(new Date(time));
+      const isNew = time >= from.getTime() && time !== out.at(-1)?.getTime();
+      const isInWindow = to === undefined || time <= to.getTime();
+      if (isNew && isInWindow && out.length < limit) out.push(new Date(time));
     }
   }
   return out;
@@ -135,7 +145,7 @@ export function projectNextExpected(
     if (days === undefined) return undefined;
     const afterAsOf = new Date(asOf.getTime() + 1);
     const from = lastOccurrence.getTime() > afterAsOf.getTime() ? lastOccurrence : afterAsOf;
-    return semiMonthlyDates(days, utcTimeOfDayMs(lastOccurrence), from, undefined, 1)[0];
+    return semiMonthlyDates(days, lastOccurrence, from, undefined, 1)[0];
   }
   if (nextOccurrence(lastOccurrence, frequency) === undefined) return undefined; // IRREGULAR
   for (let i = 0; i < MAX_OCCURRENCES; i += 1) {
@@ -159,7 +169,12 @@ export function occurrencesBetween(
   end: Date,
   daysOfMonth?: readonly number[],
 ): Date[] {
-  if (frequency === "SEMI_MONTHLY") return semiMonthlyBetween(anchor, daysOfMonth, start, end);
+  if (frequency === "SEMI_MONTHLY") {
+    const days = validDaysOfMonth(daysOfMonth);
+    if (days === undefined) return [];
+    const from = anchor !== undefined && anchor.getTime() > start.getTime() ? anchor : start;
+    return semiMonthlyDates(days, anchor, from, end, MAX_OCCURRENCES);
+  }
   if (anchor === undefined) return []; // nothing places a fixed-interval cadence without an anchor
   if (nextOccurrence(anchor, frequency) === undefined) return []; // IRREGULAR
   const out: Date[] = [];
@@ -180,18 +195,4 @@ export function occurrencesBetween(
     candidate = advanced;
   }
   return out;
-}
-
-/** SEMI_MONTHLY dates in [start, end]: from the later of `start` and the anchor, at the anchor's time of day. */
-function semiMonthlyBetween(
-  anchor: Date | undefined,
-  daysOfMonth: readonly number[] | undefined,
-  start: Date,
-  end: Date,
-): Date[] {
-  const days = validDaysOfMonth(daysOfMonth);
-  if (days === undefined) return [];
-  if (anchor === undefined) return semiMonthlyDates(days, 0, start, end, MAX_OCCURRENCES);
-  const from = anchor.getTime() > start.getTime() ? anchor : start;
-  return semiMonthlyDates(days, utcTimeOfDayMs(anchor), from, end, MAX_OCCURRENCES);
 }

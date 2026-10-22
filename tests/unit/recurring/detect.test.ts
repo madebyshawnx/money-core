@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { Transaction, TransactionState } from "@/lib/domain/types";
 import { detectRecurring, type DetectContext } from "@/lib/domain/recurring/detect";
+import { occurrencesBetween } from "@/lib/domain/recurring/schedule";
 
 const ctx: DetectContext = { asOf: new Date("2026-07-11T12:00:00.000Z") };
 
@@ -130,6 +131,115 @@ describe("recurring detect", () => {
   it("needs a repeated day of the month before it pins a series to the calendar", () => {
     const [ob] = detectRecurring(
       [txn("t1", "Payroll", 412000, "2026-06-15"), txn("t2", "Payroll", 412000, "2026-07-01")],
+      ctx,
+    );
+    expect(ob!.frequency).toBe("BIWEEKLY");
+    expect(ob!.daysOfMonth).toBeUndefined();
+  });
+
+  it("infers SEMI_MONTHLY from a 1st/15th paycheck whose weekend paydays moved to the Friday before", () => {
+    // Feb 1, Feb 15, Mar 1 and Mar 15 2026 are Sundays, paid Jan 30, Feb 13, Feb 27 and Mar 13.
+    const [ob] = detectRecurring(
+      [
+        txn("w1", "Harbor Payroll", 250000, "2026-01-01"),
+        txn("w2", "Harbor Payroll", 250000, "2026-01-15"),
+        txn("w3", "Harbor Payroll", 250000, "2026-01-30"),
+        txn("w4", "Harbor Payroll", 250000, "2026-02-13"),
+        txn("w5", "Harbor Payroll", 250000, "2026-02-27"),
+        txn("w6", "Harbor Payroll", 250000, "2026-03-13"),
+        txn("w7", "Harbor Payroll", 250000, "2026-04-01"),
+        txn("w8", "Harbor Payroll", 250000, "2026-04-15"),
+      ],
+      { asOf: new Date("2026-04-20T12:00:00.000Z") },
+    );
+    expect(ob!.frequency).toBe("SEMI_MONTHLY");
+    expect(ob!.daysOfMonth).toEqual([1, 15]);
+    expect(ob!.nextExpectedDate).toEqual(new Date("2026-05-01T00:00:00.000Z"));
+  });
+
+  it("infers SEMI_MONTHLY from a 1st/15th paycheck whose weekend paydays moved to the Monday after", () => {
+    // Aug 1 and Aug 15 2026 are Saturdays (paid Aug 3, Aug 17); Nov 1 and Nov 15 are Sundays (paid Nov 2, Nov 16).
+    const [ob] = detectRecurring(
+      [
+        txn("m1", "Harbor Payroll", 250000, "2026-07-01"),
+        txn("m2", "Harbor Payroll", 250000, "2026-07-15"),
+        txn("m3", "Harbor Payroll", 250000, "2026-08-03"),
+        txn("m4", "Harbor Payroll", 250000, "2026-08-17"),
+        txn("m5", "Harbor Payroll", 250000, "2026-09-01"),
+        txn("m6", "Harbor Payroll", 250000, "2026-09-15"),
+        txn("m7", "Harbor Payroll", 250000, "2026-10-01"),
+        txn("m8", "Harbor Payroll", 250000, "2026-10-15"),
+        txn("m9", "Harbor Payroll", 250000, "2026-11-02"),
+        txn("m10", "Harbor Payroll", 250000, "2026-11-16"),
+      ],
+      { asOf: new Date("2026-11-20T12:00:00.000Z") },
+    );
+    expect(ob!.frequency).toBe("SEMI_MONTHLY");
+    expect(ob!.daysOfMonth).toEqual([1, 15]);
+    expect(ob!.nextExpectedDate).toEqual(new Date("2026-12-01T00:00:00.000Z"));
+  });
+
+  it("infers [15, 31] from a 15th / last-day paycheck paid the Friday before weekend paydays", () => {
+    // Jan 31 and Feb 28 2026 are Saturdays (paid Jan 30, Feb 27); Feb 15 and Mar 15 are Sundays (paid Feb 13, Mar 13).
+    const [ob] = detectRecurring(
+      [
+        txn("l1", "Harbor Payroll", 250000, "2026-01-15"),
+        txn("l2", "Harbor Payroll", 250000, "2026-01-30"),
+        txn("l3", "Harbor Payroll", 250000, "2026-02-13"),
+        txn("l4", "Harbor Payroll", 250000, "2026-02-27"),
+        txn("l5", "Harbor Payroll", 250000, "2026-03-13"),
+        txn("l6", "Harbor Payroll", 250000, "2026-03-31"),
+        txn("l7", "Harbor Payroll", 250000, "2026-04-15"),
+        txn("l8", "Harbor Payroll", 250000, "2026-04-30"),
+      ],
+      { asOf: new Date("2026-05-02T12:00:00.000Z") },
+    );
+    expect(ob!.frequency).toBe("SEMI_MONTHLY");
+    expect(ob!.daysOfMonth).toEqual([15, 31]);
+    expect(ob!.nextExpectedDate).toEqual(new Date("2026-05-15T00:00:00.000Z"));
+  });
+
+  it("reads a February month-end as the last day, so a 15th / last-day paycheck projects March 31", () => {
+    const [ob] = detectRecurring(
+      [
+        txn("a1", "Harbor Payroll", 250000, "2026-02-15"),
+        txn("a2", "Harbor Payroll", 250000, "2026-02-28"),
+        txn("a3", "Harbor Payroll", 250000, "2026-03-15"),
+      ],
+      { asOf: new Date("2026-03-20T12:00:00.000Z") },
+    );
+    expect(ob!.frequency).toBe("SEMI_MONTHLY");
+    expect(ob!.daysOfMonth).toEqual([15, 31]);
+    expect(ob!.nextExpectedDate).toEqual(new Date("2026-03-31T00:00:00.000Z"));
+    expect(occurrencesBetween(undefined, "SEMI_MONTHLY", new Date("2026-03-16T00:00:00.000Z"), new Date("2026-04-30T00:00:00.000Z"), ob!.daysOfMonth)).toEqual([
+      new Date("2026-03-31T00:00:00.000Z"),
+      new Date("2026-04-15T00:00:00.000Z"),
+      new Date("2026-04-30T00:00:00.000Z"),
+    ]);
+  });
+
+  it("reads a 30-day month's end as the last day too, so it projects May 31", () => {
+    const [ob] = detectRecurring(
+      [
+        txn("c1", "Harbor Payroll", 250000, "2026-04-15"),
+        txn("c2", "Harbor Payroll", 250000, "2026-04-30"),
+        txn("c3", "Harbor Payroll", 250000, "2026-05-15"),
+      ],
+      { asOf: new Date("2026-05-20T12:00:00.000Z") },
+    );
+    expect(ob!.frequency).toBe("SEMI_MONTHLY");
+    expect(ob!.daysOfMonth).toEqual([15, 31]);
+    expect(ob!.nextExpectedDate).toEqual(new Date("2026-05-31T00:00:00.000Z"));
+  });
+
+  it("keeps a biweekly series with one late posting BIWEEKLY rather than reading an uneven 13th / last-day schedule", () => {
+    // Biweekly Fridays Feb 13, Feb 27, Mar 13 2026, with Feb 27 posting a day late on Feb 28.
+    const [ob] = detectRecurring(
+      [
+        txn("b1", "Payroll", 412000, "2026-02-13"),
+        txn("b2", "Payroll", 412000, "2026-02-28"),
+        txn("b3", "Payroll", 412000, "2026-03-13"),
+      ],
       ctx,
     );
     expect(ob!.frequency).toBe("BIWEEKLY");

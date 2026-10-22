@@ -100,7 +100,8 @@ export interface InteropRecurringObligationDto {
    * producer shape that cannot occur — the other half of the historical drift.
    */
   amountCents: Cents | null;
-  frequency: RecurringFrequency;
+  /** No SEMI_MONTHLY: not in this contract (no live consumer to version it with), so a producer must map it at compile time. */
+  frequency: Exclude<RecurringFrequency, "SEMI_MONTHLY">;
   type: RecurringType;
   isActive: boolean;
   isConfirmed: boolean;
@@ -182,7 +183,8 @@ export interface InteropRecurringObligationWire {
   merchantNormalized?: string;
   categoryId?: string;
   amountCents: number | null;
-  frequency: RecurringFrequency;
+  /** No SEMI_MONTHLY: the validator refuses it, so the wire type says so (see the runtime DTO). */
+  frequency: Exclude<RecurringFrequency, "SEMI_MONTHLY">;
   type: RecurringType;
   isActive: boolean;
   isConfirmed: boolean;

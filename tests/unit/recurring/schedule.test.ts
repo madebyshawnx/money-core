@@ -129,12 +129,12 @@ describe("recurring schedule — SEMI_MONTHLY", () => {
   });
 
   it("orders the days and counts days that land on the same date once", () => {
-    expect(occurrencesBetween(undefined, "SEMI_MONTHLY", d("2026-02-01T00:00:00.000Z"), d("2026-03-31T00:00:00.000Z"), [31, 15, 30])).toEqual([
-      d("2026-02-15T00:00:00.000Z"),
+    // 30 and 31 both land on Feb 28 and on Apr 30.
+    expect(occurrencesBetween(undefined, "SEMI_MONTHLY", d("2026-02-01T00:00:00.000Z"), d("2026-04-30T00:00:00.000Z"), [31, 30])).toEqual([
       d("2026-02-28T00:00:00.000Z"),
-      d("2026-03-15T00:00:00.000Z"),
       d("2026-03-30T00:00:00.000Z"),
       d("2026-03-31T00:00:00.000Z"),
+      d("2026-04-30T00:00:00.000Z"),
     ]);
   });
 
@@ -158,9 +158,21 @@ describe("recurring schedule — SEMI_MONTHLY", () => {
     expect(projectNextExpected(start, "SEMI_MONTHLY", d("2026-07-11T00:00:00.000Z"))).toBeUndefined();
   });
 
+  it("refuses any day list that is not exactly two different days — the cadence is twice a month", () => {
+    const start = d("2026-07-01T00:00:00.000Z");
+    const end = d("2026-07-31T00:00:00.000Z");
+    expect(occurrencesBetween(undefined, "SEMI_MONTHLY", start, end, [15])).toEqual([]);
+    expect(occurrencesBetween(undefined, "SEMI_MONTHLY", start, end, [15, 15])).toEqual([]);
+    expect(occurrencesBetween(undefined, "SEMI_MONTHLY", start, end, [1, 10, 20])).toEqual([]);
+    expect(projectNextExpected(start, "SEMI_MONTHLY", start, [1, 10, 20])).toBeUndefined();
+  });
+
   it("never lists more than the safety bound of dates, however long the window", () => {
-    expect(occurrencesBetween(undefined, "SEMI_MONTHLY", d("2026-01-01T00:00:00.000Z"), d("2200-01-01T00:00:00.000Z"), [1])).toHaveLength(1000);
     expect(occurrencesBetween(undefined, "SEMI_MONTHLY", d("2026-01-01T00:00:00.000Z"), d("2200-01-01T00:00:00.000Z"), [1, 15])).toHaveLength(1000);
+  });
+
+  it("carries the last occurrence's time of day into the projection", () => {
+    expect(projectNextExpected(d("2026-07-01T09:30:00.000Z"), "SEMI_MONTHLY", d("2026-07-11T00:00:00.000Z"), [1, 15])).toEqual(d("2026-07-15T09:30:00.000Z"));
   });
 
   it("projects the next date strictly after asOf, never before the last occurrence", () => {
