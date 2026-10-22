@@ -113,7 +113,7 @@ function buildLineItems(input: ForecastInput): ForecastLineItem[] {
 
   for (const ob of input.obligations) {
     if (!ob.isActive || ob.amountCents === undefined || !ob.nextExpectedDate) continue;
-    const dates = occurrencesBetween(ob.nextExpectedDate, ob.frequency, input.periodStart, input.periodEnd);
+    const dates = occurrencesBetween(ob.nextExpectedDate, ob.frequency, input.periodStart, input.periodEnd, ob.daysOfMonth);
     for (const date of dates) {
       if (forecastTransactions.some((t) => transactionMatchesOccurrence(t, ob, date))) continue;
       items.push({

@@ -23,6 +23,10 @@ export const MIN_OCCURRENCES_FOR_RECURRING = 2;
 export const SUBSCRIPTION_MAX_CENTS = 5000;
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+/** A twice-monthly series must repeat a day of the month (so ≥ 3 dates) before it is pinned to the calendar. */
+const MIN_OCCURRENCES_FOR_SEMI_MONTHLY = 3;
+/** Spacing of exactly this many days throughout is BIWEEKLY, even where it also fits two days of the month. */
+const BIWEEKLY_GAP_DAYS = 14;
 
 /** States that represent real, countable activity for detection. */
 const DETECTABLE_STATES: ReadonlySet<Transaction["state"]> = new Set([
@@ -75,7 +79,9 @@ function inferObligation(members: Transaction[], ctx: DetectContext): RecurringO
   for (let i = 1; i < sorted.length; i += 1) {
     gaps.push((sorted[i]!.transactionDate.getTime() - sorted[i - 1]!.transactionDate.getTime()) / MS_PER_DAY);
   }
-  const frequency = inferFrequency(gaps);
+  const gapFrequency = inferFrequency(gaps);
+  const daysOfMonth = gapFrequency === "BIWEEKLY" ? pinnedDaysOfMonth(sorted, gaps) : undefined;
+  const frequency: RecurringFrequency = daysOfMonth === undefined ? gapFrequency : "SEMI_MONTHLY";
 
   const latest = sorted[sorted.length - 1]!;
   const merchant = latest.merchantNormalized!;
@@ -89,7 +95,8 @@ function inferObligation(members: Transaction[], ctx: DetectContext): RecurringO
     merchantNormalized: merchant,
     amountCents,
     frequency,
-    nextExpectedDate: projectNextExpected(latest.transactionDate, frequency, ctx.asOf),
+    ...(daysOfMonth === undefined ? {} : { daysOfMonth }),
+    nextExpectedDate: projectNextExpected(latest.transactionDate, frequency, ctx.asOf, daysOfMonth),
     confidenceScore: confidenceFor(sorted.length, frequency),
     isConfirmed: false,
     isActive: true,
@@ -113,6 +120,41 @@ function inferFrequency(gaps: number[]): RecurringFrequency {
   if (near(g, 91, 12)) return "QUARTERLY";
   if (near(g, 365, 25)) return "ANNUAL";
   return "IRREGULAR";
+}
+
+/**
+ * The two days of the month a twice-monthly series is pinned to, or undefined.
+ *
+ * Gaps alone cannot tell SEMI_MONTHLY from BIWEEKLY: a 1st/15th paycheck's
+ * 14/16/17-day gaps sit inside BIWEEKLY's 14±3 band. The calendar can — a
+ * biweekly series drifts 2–3 days of the month every month; a semi-monthly one
+ * does not. So a series the gaps call BIWEEKLY is SEMI_MONTHLY only when:
+ *   - every date lands EXACTLY on one of two days of the month, where a date on
+ *     its month's last day stands for any day at or past it (the 31st lands on
+ *     Feb 28, as in the schedule);
+ *   - a day repeats — any two dates fit two days and prove nothing;
+ *   - not every gap is exactly 14 days. Constant 14-day spacing stays BIWEEKLY
+ *     even where a short February lets it fit two days (Feb 1, Feb 15, Mar 1).
+ * Exact days only: a pay date moved for a weekend or holiday breaks the pin and
+ * the series keeps its gap-based cadence. Conservative by design — only a series
+ * that sits exactly on two days of the month ever leaves BIWEEKLY.
+ */
+function pinnedDaysOfMonth(sorted: readonly Transaction[], gaps: readonly number[]): number[] | undefined {
+  if (sorted.length < MIN_OCCURRENCES_FOR_SEMI_MONTHLY) return undefined;
+  if (gaps.every((gap) => Math.round(gap) === BIWEEKLY_GAP_DAYS)) return undefined;
+  const dates = sorted.map((t) => t.transactionDate);
+  const days = new Set(dates.filter((date) => !isLastDayOfMonth(date)).map((date) => date.getUTCDate()));
+  const unplacedMonthEnds = dates
+    .filter((date) => isLastDayOfMonth(date))
+    .map((date) => date.getUTCDate())
+    .filter((day) => ![...days].some((listed) => listed >= day));
+  if (unplacedMonthEnds.length > 0) days.add(Math.max(...unplacedMonthEnds));
+  return days.size === 2 ? [...days].sort((a, b) => a - b) : undefined;
+}
+
+/** True when `date` is the last day of its UTC month. */
+function isLastDayOfMonth(date: Date): boolean {
+  return new Date(date.getTime() + MS_PER_DAY).getUTCMonth() !== date.getUTCMonth();
 }
 
 function inferType(amountCents: number, frequency: RecurringFrequency): RecurringType {

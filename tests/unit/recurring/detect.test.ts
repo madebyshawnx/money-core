@@ -56,6 +56,86 @@ describe("recurring detect", () => {
     expect(ob!.nextExpectedDate).toEqual(new Date("2026-07-15T00:00:00.000Z"));
   });
 
+  it("infers a SEMI_MONTHLY paycheck from a 1st/15th series whose 14/16/17-day gaps sit in BIWEEKLY's band", () => {
+    const [ob] = detectRecurring(
+      [
+        txn("s1", "Harbor Payroll", 250000, "2026-04-01"),
+        txn("s2", "Harbor Payroll", 250000, "2026-04-15"),
+        txn("s3", "Harbor Payroll", 250000, "2026-05-01"),
+        txn("s4", "Harbor Payroll", 250000, "2026-05-15"),
+        txn("s5", "Harbor Payroll", 250000, "2026-06-01"),
+        txn("s6", "Harbor Payroll", 250000, "2026-06-15"),
+        txn("s7", "Harbor Payroll", 250000, "2026-07-01"),
+      ],
+      ctx,
+    );
+    expect(ob!.type).toBe("PAYCHECK");
+    expect(ob!.frequency).toBe("SEMI_MONTHLY");
+    expect(ob!.daysOfMonth).toEqual([1, 15]);
+    expect(ob!.nextExpectedDate).toEqual(new Date("2026-07-15T00:00:00.000Z"));
+  });
+
+  it("infers a SEMI_MONTHLY [15, 31] schedule from a 15th / last-day series", () => {
+    const [ob] = detectRecurring(
+      [
+        txn("e1", "Harbor Payroll", 250000, "2026-02-15"),
+        txn("e2", "Harbor Payroll", 250000, "2026-02-28"),
+        txn("e3", "Harbor Payroll", 250000, "2026-03-15"),
+        txn("e4", "Harbor Payroll", 250000, "2026-03-31"),
+        txn("e5", "Harbor Payroll", 250000, "2026-04-15"),
+        txn("e6", "Harbor Payroll", 250000, "2026-04-30"),
+        txn("e7", "Harbor Payroll", 250000, "2026-05-15"),
+        txn("e8", "Harbor Payroll", 250000, "2026-05-31"),
+        txn("e9", "Harbor Payroll", 250000, "2026-06-15"),
+        txn("e10", "Harbor Payroll", 250000, "2026-06-30"),
+      ],
+      ctx,
+    );
+    expect(ob!.frequency).toBe("SEMI_MONTHLY");
+    expect(ob!.daysOfMonth).toEqual([15, 31]);
+    expect(ob!.nextExpectedDate).toEqual(new Date("2026-07-15T00:00:00.000Z"));
+  });
+
+  it("keeps constant 14-day gaps BIWEEKLY even when they also land on two days of the month", () => {
+    // Feb 1 + 28 days is Mar 1 in a non-leap year, so this series fits 1st/15th too.
+    const [ob] = detectRecurring(
+      [
+        txn("f1", "Payroll", 412000, "2026-02-01"),
+        txn("f2", "Payroll", 412000, "2026-02-15"),
+        txn("f3", "Payroll", 412000, "2026-03-01"),
+        txn("f4", "Payroll", 412000, "2026-03-15"),
+      ],
+      ctx,
+    );
+    expect(ob!.frequency).toBe("BIWEEKLY");
+    expect(ob!.daysOfMonth).toBeUndefined();
+  });
+
+  it("keeps a drifting biweekly series BIWEEKLY even when a holiday shifts one gap", () => {
+    // Jul 3 2026 is the observed Independence Day holiday, so that Friday's pay lands Thursday Jul 2.
+    const [ob] = detectRecurring(
+      [
+        txn("h1", "Payroll", 412000, "2026-05-22"),
+        txn("h2", "Payroll", 412000, "2026-06-05"),
+        txn("h3", "Payroll", 412000, "2026-06-19"),
+        txn("h4", "Payroll", 412000, "2026-07-02"),
+      ],
+      ctx,
+    );
+    expect(ob!.frequency).toBe("BIWEEKLY");
+    expect(ob!.daysOfMonth).toBeUndefined();
+    expect(ob!.nextExpectedDate).toEqual(new Date("2026-07-16T00:00:00.000Z"));
+  });
+
+  it("needs a repeated day of the month before it pins a series to the calendar", () => {
+    const [ob] = detectRecurring(
+      [txn("t1", "Payroll", 412000, "2026-06-15"), txn("t2", "Payroll", 412000, "2026-07-01")],
+      ctx,
+    );
+    expect(ob!.frequency).toBe("BIWEEKLY");
+    expect(ob!.daysOfMonth).toBeUndefined();
+  });
+
   it("classifies a small recurring charge as a SUBSCRIPTION", () => {
     const [ob] = detectRecurring(
       [
