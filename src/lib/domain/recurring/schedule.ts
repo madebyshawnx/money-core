@@ -47,6 +47,8 @@ const DAYS_PER_STEP: Partial<Record<RecurringFrequency, number>> = {
  * Days in a UTC month (`month` may run past 11 into later years). The ONE
  * month-length rule in the recurring engine: month-end clamping for every
  * cadence comes through here, and detection reads it via `occurrencesBetween`.
+ * Clock-free calendar arithmetic (no "today"), in this module's existing UTC
+ * convention.
  */
 function daysInUtcMonth(year: number, month: number): number {
   return new Date(Date.UTC(year, month + 1, 0)).getUTCDate();

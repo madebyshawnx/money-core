@@ -246,6 +246,56 @@ describe("recurring detect", () => {
     expect(ob!.daysOfMonth).toBeUndefined();
   });
 
+  it("caps the confidence of a fit that needed weekend moves — a biweekly series whose Labor Day pay moved to the Friday before", () => {
+    // Monday paydays Sep 7 2026 (Labor Day, paid Fri Sep 4), Sep 21, Oct 5, Oct 19. A KNOWN false positive
+    // (deferred to Task 1b.6): Sep 4 and Sep 21 fit days 5 and 19 only through weekend moves.
+    const [ob] = detectRecurring(
+      [
+        txn("ld1", "Payroll", 412000, "2026-09-04"),
+        txn("ld2", "Payroll", 412000, "2026-09-21"),
+        txn("ld3", "Payroll", 412000, "2026-10-05"),
+        txn("ld4", "Payroll", 412000, "2026-10-19"),
+      ],
+      ctx,
+    );
+    expect(ob!.frequency).toBe("SEMI_MONTHLY");
+    expect(ob!.daysOfMonth).toEqual([5, 19]);
+    expect(ob!.confidenceScore).toBe(60);
+  });
+
+  it("caps the confidence of a fit that needed a month-end clamp — a biweekly series with Feb 27 posted on Feb 28", () => {
+    // A KNOWN false positive (deferred to Task 1b.6) needing no weekend move: day 30 reaches Feb 28 only by clamping.
+    const [ob] = detectRecurring(
+      [
+        txn("cx1", "Payroll", 412000, "2026-01-30"),
+        txn("cx2", "Payroll", 412000, "2026-02-13"),
+        txn("cx3", "Payroll", 412000, "2026-02-28"),
+        txn("cx4", "Payroll", 412000, "2026-03-13"),
+      ],
+      ctx,
+    );
+    expect(ob!.frequency).toBe("SEMI_MONTHLY");
+    expect(ob!.daysOfMonth).toEqual([13, 30]);
+    expect(ob!.confidenceScore).toBe(60);
+  });
+
+  it("keeps full confidence for a semi-monthly fit with no weekend move or month-end clamp", () => {
+    const [ob] = detectRecurring(
+      [
+        txn("k1", "Harbor Payroll", 250000, "2026-04-01"),
+        txn("k2", "Harbor Payroll", 250000, "2026-04-15"),
+        txn("k3", "Harbor Payroll", 250000, "2026-05-01"),
+        txn("k4", "Harbor Payroll", 250000, "2026-05-15"),
+        txn("k5", "Harbor Payroll", 250000, "2026-06-01"),
+        txn("k6", "Harbor Payroll", 250000, "2026-06-15"),
+        txn("k7", "Harbor Payroll", 250000, "2026-07-01"),
+      ],
+      ctx,
+    );
+    expect(ob!.frequency).toBe("SEMI_MONTHLY");
+    expect(ob!.confidenceScore).toBe(95);
+  });
+
   it("classifies a small recurring charge as a SUBSCRIPTION", () => {
     const [ob] = detectRecurring(
       [
