@@ -127,6 +127,24 @@ describe("forecast — line items", () => {
     expect(pay[0]!.amountCents).toBe(412000);
   });
 
+  it("projects a SEMI_MONTHLY obligation on each of its days of the month", () => {
+    const run = buildForecast(
+      input({
+        obligations: [
+          obligation({
+            type: "PAYCHECK",
+            amountCents: 250000,
+            frequency: "SEMI_MONTHLY",
+            daysOfMonth: [1, 15],
+            nextExpectedDate: new Date("2026-07-01T00:00:00.000Z"),
+          }),
+        ],
+      }),
+    );
+    const pay = run.lineItems.filter((l) => l.source === "PAYCHECK");
+    expect(pay.map((l) => l.date)).toEqual([new Date("2026-07-01T00:00:00.000Z"), new Date("2026-07-15T00:00:00.000Z")]);
+  });
+
   it("includes forecast-relevant pending transactions as line items", () => {
     const run = buildForecast(input({ transactions: [pendingTxn()] }));
     const pend = run.lineItems.filter((l) => l.source === "PENDING_TRANSACTION");

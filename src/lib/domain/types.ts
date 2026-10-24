@@ -69,6 +69,7 @@ export type RecurringType = "BILL" | "SUBSCRIPTION" | "PAYCHECK" | "TRANSFER" | 
 export type RecurringFrequency =
   | "WEEKLY"
   | "BIWEEKLY"
+  | "SEMI_MONTHLY"
   | "MONTHLY"
   | "QUARTERLY"
   | "ANNUAL"
@@ -262,6 +263,28 @@ export interface RecurringObligation {
   isActive: boolean;
   includeInForecast: boolean;
   accountId?: string;
+  /**
+   * A known occurrence the schedule steps from, as an ISO date (e.g.
+   * "2026-07-03") — what places a BIWEEKLY cycle on the calendar. Not read by
+   * this package's engines: the forecast steps from `nextExpectedDate`.
+   */
+  anchorDate?: string;
+  /**
+   * SEMI_MONTHLY: the days of the month it falls on, e.g. [1, 15]. A day past a
+   * month's end lands on that month's last day (31 → Feb 28). Ignored by every
+   * other cadence.
+   */
+  daysOfMonth?: readonly number[];
+  /**
+   * The effective date it was cancelled, as an ISO date — distinct from being
+   * dismissed. Not read by this package's engines: the forecast keys on `isActive`.
+   */
+  cancelledAt?: string;
+  /**
+   * Further merchant identities whose payments settle it (e.g. "NETFLIX.COM" for
+   * "Netflix"). Not read by this package's engines.
+   */
+  matchKeys?: readonly string[];
 }
 
 // ---------------------------------------------------------------------------

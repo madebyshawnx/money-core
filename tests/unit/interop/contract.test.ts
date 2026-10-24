@@ -33,6 +33,8 @@ import {
   serializeInteropBundle,
   validateInteropBundle,
   type InteropBundle,
+  type InteropRecurringObligationDto,
+  type InteropRecurringObligationWire,
 } from "@/lib/interop";
 
 const FIXTURE = resolve(__dirname, "../../fixtures/interop-bundle-v4.json");
@@ -363,6 +365,22 @@ describe("serializeInteropBundle — the canonical producer", () => {
     const result = serializeInteropBundle(corrupt);
     expect(result.ok).toBe(false);
     expect(issuePaths(result)).toContain("recurringObligations[0].nextExpectedDate");
+  });
+
+  it("keeps SEMI_MONTHLY out of the contract — refused by its types and at both boundaries", () => {
+    const bundle = goldenBundle();
+    // @ts-expect-error — SEMI_MONTHLY is not part of the interop contract, so the runtime DTO type must refuse it.
+    const semiMonthlyRow: InteropRecurringObligationDto = { ...bundle.recurringObligations[0]!, frequency: "SEMI_MONTHLY" };
+    // @ts-expect-error — and so must the wire type.
+    const wireFrequency: InteropRecurringObligationWire["frequency"] = "SEMI_MONTHLY";
+
+    const serialized = serializeInteropBundle({ ...bundle, recurringObligations: [semiMonthlyRow] });
+    expect(serialized.ok).toBe(false);
+    expect(issuePaths(serialized)).toContain("recurringObligations[0].frequency");
+
+    const parsed = parseInteropBundleText(corrupted((wire) => (wire.recurringObligations[0].frequency = wireFrequency)));
+    expect(parsed.ok).toBe(false);
+    expect(issuePaths(parsed)).toContain("recurringObligations[0].frequency");
   });
 });
 
