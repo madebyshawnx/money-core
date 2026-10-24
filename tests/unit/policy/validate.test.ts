@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { validateSummary } from "@/lib/domain/policy/validate";
+import { validateSummary, validateOptimizerText } from "@/lib/domain/policy/validate";
 
 const clean =
   "This week you spent $420.00 across your accounts and received $4,120.00 in income. Three transactions need your review.";
@@ -110,5 +110,92 @@ describe("policy validate — docs/26 deny-list coverage", () => {
     "Your dining category had the highest spending this period.",
   ])("still passes factual superlatives and past-tense reporting: %s", (text) => {
     expect(validateSummary(text, { requiresStaleCaveat: false }).status).toBe("PASSED");
+  });
+});
+
+describe("policy validate — debt-priority ordering about a named credit product (no literal 'debt' required)", () => {
+  // The gap this closes: existing patterns only caught "pay off your card/loan/
+  // debt/balance" (requires the word "off") or "debt settlement/strategy/
+  // prioritization" (requires the literal word "debt"). None of them caught an
+  // ordering instruction that names a specific card directly, with no "off" and
+  // no "debt" anywhere in the sentence.
+  it.each([
+    "Pay the Visa card first.",
+    "Prioritize the Chase card over the Amex balance.",
+    "You can pay your Discover card first if you choose this scenario.",
+    "Pay the mortgage before the car loan this month.",
+    "Pay the Citibank card ahead of the Mastercard.",
+  ])("blocks ordering advice naming a credit product directly: %s", (text) => {
+    const r = validateSummary(text, { requiresStaleCaveat: false });
+    expect(r.status).toBe("BLOCKED");
+    expect(r.violations.some((v) => v.code === "debt_priority_ordering")).toBe(true);
+  });
+
+  it("still passes a factual statement about the user's own account terms", () => {
+    const r = validateSummary("Your Visa APR is 24.99%, based on your account terms.", {
+      requiresStaleCaveat: false,
+    });
+    expect(r.status).toBe("PASSED");
+  });
+
+  it("still passes past-tense reporting of what already happened (no 'pay'/'prioritize' verb)", () => {
+    const r = validateSummary("The Visa card was paid before the Amex last month.", {
+      requiresStaleCaveat: false,
+    });
+    expect(r.status).toBe("PASSED");
+  });
+
+  it("still passes legitimate ranking language that never says 'pay' or 'prioritize'", () => {
+    const r = validateSummary("The Chase card renegotiation ranked first by estimated savings.", {
+      requiresStaleCaveat: false,
+    });
+    expect(r.status).toBe("PASSED");
+  });
+});
+
+describe("validateOptimizerText — the exact audited gap case, and the conditional-factual allowlist", () => {
+  it("blocks the audited case: a named card, ordering language, and a trailing unrelated hedge", () => {
+    // This is the literal finding: naming a specific card directly with ordering
+    // language ("first") was not caught at all, and CONDITIONAL_FACTUAL_ALLOWLIST
+    // was satisfied merely because the unrelated word "about" appeared later in
+    // the text (in a different sentence, hedging a different, unrelated figure).
+    const r = validateOptimizerText("Pay the Visa card first. About $50/month is listed [ev_123].", {
+      requiresStaleCaveat: false,
+    });
+    expect(r.status).toBe("BLOCKED");
+    expect(r.violations.some((v) => v.code === "debt_priority_ordering")).toBe(true);
+  });
+
+  it.each([
+    "Prioritize the Chase card over the Amex balance this month [ev_1].",
+    "Pay the Discover card before the student loan if you want to save on interest [ev_1].",
+  ])("blocks other debt-priority ordering phrasings: %s", (text) => {
+    expect(validateOptimizerText(text, { requiresStaleCaveat: false }).status).toBe("BLOCKED");
+  });
+
+  it("still passes legitimate ranking of the user's OWN optimizer opportunities", () => {
+    const r = validateOptimizerText(
+      "The Chase card renegotiation ranks first because its estimated saving is about $40.00 per month [ev_1].",
+      { requiresStaleCaveat: false },
+    );
+    expect(r.status).toBe("PASSED");
+  });
+
+  it("the allowlist no longer accepts a bare, number-less 'about' as sufficient hedging", () => {
+    // No digit anywhere near "about", and no "if"/"estimated"/"scenario"/etc.
+    // either — this must now fail the conditional-factual requirement, where
+    // before the bare word "about" alone satisfied the allowlist.
+    const r = validateOptimizerText("Thinking about the Chase card renewal timing [ev_1].", {
+      requiresStaleCaveat: false,
+    });
+    expect(r.status).toBe("BLOCKED");
+    expect(r.violations.some((v) => v.code === "not_conditional_factual")).toBe(true);
+  });
+
+  it("the allowlist still accepts 'about' when it actually hedges a figure", () => {
+    const r = validateOptimizerText("Cancelling the subscription saves about $12.00 per month [ev_1].", {
+      requiresStaleCaveat: false,
+    });
+    expect(r.status).toBe("PASSED");
   });
 });

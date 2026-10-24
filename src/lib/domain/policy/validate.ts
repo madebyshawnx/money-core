@@ -54,6 +54,27 @@ const PROHIBITED_PATTERNS: Array<{ code: string; pattern: RegExp }> = [
   },
   { code: "investing", pattern: /\b(invest(ing|ment|ments)?|index fund|portfolio|stocks?|securities|buy (shares|stock))\b/i },
   { code: "credit_loans", pattern: /\b(refinanc(e|ing)|consolidat(e|ing)\s+(your\s+)?debt|pay\s*off\s+(your\s+)?(loan|debt|balance|card)|pay\s+down|take\s+out\s+a\s+loan|apply\s+for\s+a\s+(loan|credit)|open\s+a\s+(credit|line))\b/i },
+  /*
+   * Debt-priority ORDERING naming a specific credit product directly — the gap
+   * `credit_loans` and `debt_settlement` below do not cover. Those require the
+   * literal word "off" ("pay off ...") or the literal word "debt" ("debt
+   * settlement/strategy/prioritization"). Neither fires on "Pay the Visa card
+   * first." or "Prioritize the Chase card over the Amex balance.": an ordering
+   * instruction that names a card/loan/mortgage/balance directly, with no "off"
+   * and no "debt" anywhere in the sentence. Deliberately matches only the bare
+   * imperative/infinitive verb forms ("pay", "prioritize"/"prioritise" and their
+   * -ing forms) — same convention as `credit_loans`'s own "pay off" (not "paid
+   * off") — so factual past-tense reporting ("the card was paid before...") and
+   * ranking language that never says "pay"/"prioritize" ("ranked first by
+   * estimated savings") keep passing. The three-part gap mirrors
+   * `prescriptive_money_coaching` above: verb, then (within 5 words) the named
+   * product, then (within 4 words) the ordering word.
+   */
+  {
+    code: "debt_priority_ordering",
+    pattern:
+      /\b(pay|priorit(?:y|ize|ise|izing|ising))\b(?:\s+\S+){0,5}\s+\b(visa|mastercard|amex|american\s+express|discover|chase|capital\s+one|citi(?:bank)?|card|loan|mortgage|balance|debt|line\s+of\s+credit)\b(?:\s+\S+){0,4}\s+\b(first|before|ahead\s+of|over|above)\b/i,
+  },
   { code: "taxes", pattern: /\b(tax\s+(advice|strategy|deduction|write[- ]?off)|write\s+it\s+off)\b/i },
   { code: "insurance", pattern: /\b(insurance\s+(policy|plan|coverage)\s+(you|to)|switch\s+insurance|buy\s+insurance)\b/i },
   { code: "money_movement", pattern: /\b(transfer|move|send)\s+(the\s+)?(money|funds|cash|\$)/i },
@@ -103,7 +124,19 @@ const OPTIMIZER_BLOCKS: Array<{ code: string; pattern: RegExp }> = [
   { code: "done_for_you", pattern: /\b(we will call|we contact|we negotiate|we cancel|act as your agent|power of attorney|attorney-in-fact)\b/i },
 ];
 
-const CONDITIONAL_FACTUAL_ALLOWLIST = /\b(appears|if\b|estimated|about|scenario|optional|user makes|does not contact|does not move money|does not guarantee|any provider outcome depends on the provider|renewed)\b/i;
+/*
+ * "about" was previously a bare word match — satisfied by ANY occurrence
+ * anywhere in the text, including as an ordinary preposition unrelated to
+ * hedging a figure ("thinking about the renewal timing"), and even when it sat
+ * in a different sentence from the actual claim being validated. That let a
+ * single incidental "about" launder an entire unhedged (or actively dangerous)
+ * statement as "conditional-factual". Tightened to require "about" to actually
+ * be doing hedging work: a figure within a short span after it, matching how
+ * this codebase's own system prompts use the word ("write every figure as an
+ * estimate — use 'estimated', 'about', 'appears', or an 'if …' clause").
+ */
+const CONDITIONAL_FACTUAL_ALLOWLIST =
+  /\b(appears|if\b|estimated|about[^.?!]{0,12}\d|scenario|optional|user makes|does not contact|does not move money|does not guarantee|any provider outcome depends on the provider|renewed)\b/i;
 
 export function validateOptimizerText(text: string, options: ValidateOptions): PolicyResult {
   // ACCUMULATE both layers; do NOT early-return when the base policy blocks.
