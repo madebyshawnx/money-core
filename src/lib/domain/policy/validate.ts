@@ -61,19 +61,43 @@ const PROHIBITED_PATTERNS: Array<{ code: string; pattern: RegExp }> = [
    * settlement/strategy/prioritization"). Neither fires on "Pay the Visa card
    * first." or "Prioritize the Chase card over the Amex balance.": an ordering
    * instruction that names a card/loan/mortgage/balance directly, with no "off"
-   * and no "debt" anywhere in the sentence. Deliberately matches only the bare
-   * imperative/infinitive verb forms ("pay", "prioritize"/"prioritise" and their
+   * and no "debt" anywhere in the sentence.
+   *
+   * TWO patterns, not one, and both SENTENCE-SCOPED — every gap is `[^.?!]`
+   * (never `\S`), so a match cannot cross into an unrelated sentence the way a
+   * word-count-bounded filler would (caught by independent review: a
+   * word-count filler let "Your pay reached the Chase account. First, here is
+   * the estimated total." match across the period into an unrelated "First").
+   *
+   *   1. verb + product + "first". "First" alone is risky regardless of what,
+   *      if anything, follows it — no second product is required.
+   *   2. verb + product + (before|over|above|ahead of) + a SECOND product.
+   *      These four words are ordinary relational prepositions that make
+   *      sense against almost anything ("pay the Visa before ITS DUE DATE" is
+   *      a plain statement about timing, not an instruction to prioritize one
+   *      product over another) — also caught by independent review. Requiring
+   *      a second named product is what distinguishes "before the Amex" from
+   *      "before its due date".
+   *
+   * Deliberately matches only the bare imperative/infinitive/-ing verb forms
+   * ("pay"/"paying", "settle"/"settling", "prioritize"/"prioritise" and their
    * -ing forms) — same convention as `credit_loans`'s own "pay off" (not "paid
-   * off") — so factual past-tense reporting ("the card was paid before...") and
-   * ranking language that never says "pay"/"prioritize" ("ranked first by
-   * estimated savings") keep passing. The three-part gap mirrors
-   * `prescriptive_money_coaching` above: verb, then (within 5 words) the named
-   * product, then (within 4 words) the ordering word.
+   * off") — so factual past-tense reporting ("the card was paid before...")
+   * and ranking language that never says one of these verbs ("ranked first by
+   * estimated savings") keep passing. "Handle"/"deal with"/"address" and
+   * other near-synonyms are deliberately NOT included: too generic on their
+   * own ("handle the Visa dispute") to add safely without a wider false-
+   * positive survey than this fix's scope covers.
    */
   {
     code: "debt_priority_ordering",
     pattern:
-      /\b(pay|priorit(?:y|ize|ise|izing|ising))\b(?:\s+\S+){0,5}\s+\b(visa|mastercard|amex|american\s+express|discover|chase|capital\s+one|citi(?:bank)?|card|loan|mortgage|balance|debt|line\s+of\s+credit)\b(?:\s+\S+){0,4}\s+\b(first|before|ahead\s+of|over|above)\b/i,
+      /\b(pay(?:ing)?|settl(?:e|ing)|priorit(?:y|ize|ise|izing|ising))\b[^.?!]{0,40}?\b(visa|mastercard|amex|american\s+express|discover|chase|capital\s+one|citi(?:bank)?|card|loan|mortgage|balance|debt|line\s+of\s+credit)\b[^.?!]{0,20}?\bfirst\b/i,
+  },
+  {
+    code: "debt_priority_ordering",
+    pattern:
+      /\b(pay(?:ing)?|settl(?:e|ing)|priorit(?:y|ize|ise|izing|ising))\b[^.?!]{0,40}?\b(visa|mastercard|amex|american\s+express|discover|chase|capital\s+one|citi(?:bank)?|card|loan|mortgage|balance|debt|line\s+of\s+credit)\b[^.?!]{0,20}?\b(before|over|above|ahead\s+of)\b[^.?!]{0,20}?\b(visa|mastercard|amex|american\s+express|discover|chase|capital\s+one|citi(?:bank)?|card|loan|mortgage|balance|debt|line\s+of\s+credit)\b/i,
   },
   { code: "taxes", pattern: /\b(tax\s+(advice|strategy|deduction|write[- ]?off)|write\s+it\s+off)\b/i },
   { code: "insurance", pattern: /\b(insurance\s+(policy|plan|coverage)\s+(you|to)|switch\s+insurance|buy\s+insurance)\b/i },
@@ -131,12 +155,24 @@ const OPTIMIZER_BLOCKS: Array<{ code: string; pattern: RegExp }> = [
  * in a different sentence from the actual claim being validated. That let a
  * single incidental "about" launder an entire unhedged (or actively dangerous)
  * statement as "conditional-factual". Tightened to require "about" to actually
- * be doing hedging work: a figure within a short span after it, matching how
- * this codebase's own system prompts use the word ("write every figure as an
- * estimate — use 'estimated', 'about', 'appears', or an 'if …' clause").
+ * be doing hedging work: a DOLLAR FIGURE within a short span after it, matching
+ * how this codebase's own system prompts use the word ("write every figure as
+ * an estimate — use 'estimated', 'about', 'appears', or an 'if …' clause") and
+ * how every real fixture actually writes it ("about $40.00", "about
+ * $95.00/year") — never a bare count. A bare digit was tried first and
+ * rejected on independent review: "thinking about 2 renewal dates" has a digit
+ * with no dollar sign and is not a hedged financial figure.
+ *
+ * NAMED LIMITATION, not solved here: this check is TEXT-WIDE, not scoped to
+ * the specific claim it is meant to hedge, so an unrelated dollar figure
+ * elsewhere in the same text can still satisfy it for a different, unhedged
+ * claim. This narrows that gap — a bare word no longer qualifies — without
+ * closing it; claim-scoped hedging would require the validator to reason
+ * about which sentence a figure belongs to, materially beyond this fix's
+ * scope (see the "known limitation" test in validate.test.ts).
  */
 const CONDITIONAL_FACTUAL_ALLOWLIST =
-  /\b(appears|if\b|estimated|about[^.?!]{0,12}\d|scenario|optional|user makes|does not contact|does not move money|does not guarantee|any provider outcome depends on the provider|renewed)\b/i;
+  /\b(appears|if\b|estimated|about[^.?!]{0,12}?\$\s?\d+|scenario|optional|user makes|does not contact|does not move money|does not guarantee|any provider outcome depends on the provider|renewed)\b/i;
 
 export function validateOptimizerText(text: string, options: ValidateOptions): PolicyResult {
   // ACCUMULATE both layers; do NOT early-return when the base policy blocks.
